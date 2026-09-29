@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js?v=20260929-3";
+import { CONFIG } from "./config.js?v=20260929-4";
 
 function question(id, label) {
   return {
@@ -10,6 +10,13 @@ function question(id, label) {
 }
 
 const today = new Date().toISOString().slice(0, 10);
+
+function defaultGrouping() {
+  return {
+    entrance: { enabled: false, expected_participants: 30, group_count: 5 },
+    exit: { enabled: false, expected_participants: 30, group_count: 5 }
+  };
+}
 
 export const DEFAULT_COURSE = {
   id: "demo-course-1",
@@ -26,6 +33,7 @@ export const DEFAULT_COURSE = {
   encounters: [1, 2, 3].map(number => ({
     number,
     title: `Encuentro ${number}`,
+    grouping: defaultGrouping(),
     questions: [1, 2, 3].map(index => question(`e${number}q${index}`, `Pregunta ${index} de la unidad ${number}`))
   })),
   integrative_question: question("integrative", "Pregunta integradora del curso")
@@ -72,6 +80,24 @@ function publicCourse(course) {
     encounters: course.encounters.map(encounter => ({ ...encounter, questions: encounter.questions.map(sanitize) })),
     integrative_question: sanitize(course.integrative_question)
   };
+}
+
+function activeGrouping(course) {
+  const encounter = course.encounters?.find(item => Number(item.number) === Number(course.active_encounter));
+  return encounter?.grouping?.[course.active_phase] || { enabled: false };
+}
+
+function balancedGroup(responses, course, groupCount) {
+  const counts = Array.from({ length: groupCount }, (_, index) => ({ number: index + 1, total: 0 }));
+  responses
+    .filter(row => row.course_id === course.id && Number(row.encounter_number) === Number(course.active_encounter) && row.phase === course.active_phase && row.group_number)
+    .forEach(row => {
+      const group = counts[Number(row.group_number) - 1];
+      if (group) group.total += 1;
+    });
+  const minimum = Math.min(...counts.map(item => item.total));
+  const candidates = counts.filter(item => item.total === minimum);
+  return candidates[Math.floor(Math.random() * candidates.length)].number;
 }
 
 function apiError(payload, status) {
@@ -149,16 +175,24 @@ export class DataClient {
       if (responses.some(item => item.participant_id === participant.id && item.encounter_number === course.active_encounter && item.phase === course.active_phase)) {
         throw new Error("Este ticket ya fue completado con ese correo.");
       }
+      const grouping = activeGrouping(course);
+      const groupCount = grouping.enabled ? Math.max(2, Math.min(100, Number(grouping.group_count) || 2)) : null;
+      const groupNumber = groupCount ? balancedGroup(responses, course, groupCount) : null;
       responses.push({
         id: localId(), course_id: course.id, participant_id: participant.id,
         encounter_number: course.active_encounter, phase: course.active_phase,
         answers: values.answers, expectation_text: values.expectation_text || null,
         expectation_fulfillment: values.expectation_fulfillment || null,
         course_usefulness: values.course_usefulness || null,
+        group_number: groupNumber,
         responded_at: new Date().toISOString()
       });
       writeLocal("responses", responses);
-      return;
+      return {
+        group_number: groupNumber,
+        group_count: groupCount,
+        expected_participants: groupNumber ? Number(grouping.expected_participants) || null : null
+      };
     }
     const body = {
       p_course_id: values.course_id,
@@ -172,7 +206,7 @@ export class DataClient {
       p_expectation_fulfillment: values.expectation_fulfillment || null,
       p_course_usefulness: values.course_usefulness ? Number(values.course_usefulness) : null
     };
-    await this.request("/rest/v1/rpc/submit_active_ticket", { method: "POST", body: JSON.stringify(body) });
+    return this.request("/rest/v1/rpc/submit_active_ticket", { method: "POST", body: JSON.stringify(body) });
   }
 
   async login(accessCode) {

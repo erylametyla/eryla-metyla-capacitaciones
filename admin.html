@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Administración de capacitaciones de ERYLA METYLA.">
   <title>Administración | ERYLA METYLA</title>
-  <link rel="stylesheet" href="styles.css?v=20260929-3">
+  <link rel="stylesheet" href="styles.css?v=20260929-4">
 </head>
 <body data-page="admin">
   <main class="shell shell--admin">
@@ -73,7 +73,8 @@
               <label><input type="radio" name="active_phase" value="exit"><span>Salida</span></label>
             </div></fieldset>
             <button class="button button--primary button--wide" id="activate-ticket-button" type="button">Habilitar este ticket</button>
-            <p class="microcopy">Solo el ticket seleccionado aceptará respuestas.</p>
+            <div class="grouping-status" data-grouping-status></div>
+            <p class="microcopy">Solo el ticket seleccionado aceptará respuestas. Si el sorteo está activo, el grupo se asigna al enviar.</p>
           </article>
 
           <article class="panel-card">
@@ -100,6 +101,6 @@
 
   <dialog class="report-dialog" id="report-dialog"><div class="dialog-topbar"><strong>Informe estadístico</strong><button class="icon-button" type="button" data-close-dialog>×</button></div><div class="report-content" data-report-content></div><div class="dialog-actions"><button class="button button--secondary" type="button" data-print-report>Imprimir / guardar PDF</button><button class="button button--primary" type="button" data-close-dialog>Cerrar</button></div></dialog>
   <dialog class="confirm-dialog" id="confirm-dialog"><form method="dialog"><span class="eyebrow">Confirmación</span><h2 data-confirm-title>Confirmar acción</h2><p data-confirm-text></p><label class="confirm-input-wrap" data-confirm-input-wrap hidden>Escribí <strong>BORRAR</strong> para continuar<input data-confirm-input autocomplete="off"></label><div class="dialog-actions"><button class="button button--quiet" value="cancel">Cancelar</button><button class="button button--danger" value="confirm" data-confirm-button>Confirmar</button></div></form></dialog>
-  <script type="module" src="app.js?v=20260929-3"></script>
+  <script type="module" src="app.js?v=20260929-4"></script>
 </body>
 </html>

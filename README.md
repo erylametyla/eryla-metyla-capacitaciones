@@ -11,6 +11,8 @@ Aplicación responsive para cursos organizados en encuentros. Cada encuentro tie
 - vinculación de todos los tickets al mismo participante mediante correo;
 - expectativa inicial, clasificación temática y cumplimiento final;
 - informe por encuentro con respuestas correctas, cambio y participantes que mejoraron, se mantuvieron o disminuyeron;
+- cantidad esperada de participantes y sorteo equilibrado de grupos configurable para la Entrada y la Salida de cada encuentro;
+- aviso individual del grupo al finalizar el ticket y número de grupo incluido en la exportación CSV;
 - evolución integradora del inicio al cierre;
 - distribución por institución y área de trabajo;
 - CSV individual completo con fechas y respuestas;
@@ -33,6 +35,8 @@ Aplicación responsive para cursos organizados en encuentros. Cada encuentro tie
 6. Publicar el repositorio en GitHub Pages.
 
 La clave `anon` es pública por diseño. Nunca debe copiarse la clave `service_role` al sitio. La protección real de participantes, DNI y respuestas está en las políticas RLS de `supabase.sql`.
+
+Para actualizar una instalación anterior a la función de grupos, ejecutar una vez `supabase-grouping-migration.sql` en el editor SQL de Supabase.
 
 ## Privacidad
 

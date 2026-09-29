@@ -1,4 +1,4 @@
-import { classifyExpectation } from "./stats.js?v=20260929-3";
+import { classifyExpectation } from "./stats.js?v=20260929-4";
 
 function dateTime(value) {
   if (!value) return "";
@@ -13,6 +13,7 @@ export function buildCsvData(course, data) {
   (course.encounters || []).forEach(encounter => {
     ["entrada", "salida"].forEach(phase => {
       dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_fecha`);
+      dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_grupo`);
       encounter.questions.forEach((_, index) => dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_pregunta_${index + 1}`));
     });
   });
@@ -31,6 +32,7 @@ export function buildCsvData(course, data) {
         if (encounter.number === 1 && phase === "entrance") firstEntrance = response;
         if (encounter.number === course.encounters.length && phase === "exit") finalExit = response;
         cells.push(dateTime(response?.responded_at));
+        cells.push(response?.group_number || "");
         encounter.questions.forEach(question => cells.push(response?.answers?.[question.id] || ""));
       });
     });

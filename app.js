@@ -1,6 +1,6 @@
-import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260929-3";
-import { buildReportData } from "./stats.js?v=20260929-3";
-import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260929-3";
+import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260929-4";
+import { buildReportData } from "./stats.js?v=20260929-4";
+import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260929-4";
 
 const client = new DataClient();
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -115,7 +115,7 @@ async function initTicket(phase) {
       button.disabled = true;
       setMessage(message, "Guardando…", "info");
       try {
-        await client.submitTicket({
+        const result = await client.submitTicket({
           course_id: course.id,
           email: firstEntrance ? values.get("email") : values.get("email_repeat") || values.get("email"),
           full_name: values.get("full_name"), dni: values.get("dni"),
@@ -125,8 +125,15 @@ async function initTicket(phase) {
           course_usefulness: values.get("course_usefulness"), answers
         });
         form.reset();
-        setMessage(message, "Respuesta guardada correctamente. Gracias por participar.", "success");
-        button.hidden = true;
+        if (result?.group_number) {
+          form.hidden = true;
+          const success = $("[data-success-panel]");
+          success.hidden = false;
+          success.innerHTML = `<span class="eyebrow">Sorteo completado</span><h2>Pertenecés al grupo ${escapeHtml(result.group_number)}</h2><p>Anotalo para la actividad de este encuentro.</p><div class="group-result__number" aria-label="Grupo ${escapeHtml(result.group_number)}">${escapeHtml(result.group_number)}</div>`;
+        } else {
+          setMessage(message, "Respuesta guardada correctamente. Gracias por participar.", "success");
+          button.hidden = true;
+        }
       } catch (error) {
         setMessage(message, error.message);
         button.disabled = false;
@@ -147,6 +154,15 @@ function blankQuestion(id, label) {
   return { id, question: label, options: ["Opción A", "Opción B", "Opción C"], correct_answer: "Opción A" };
 }
 
+function normalizeGrouping(value = {}) {
+  const normalizePhase = phase => ({
+    enabled: Boolean(value?.[phase]?.enabled),
+    expected_participants: Math.max(1, Math.min(5000, Number(value?.[phase]?.expected_participants) || 30)),
+    group_count: Math.max(2, Math.min(100, Number(value?.[phase]?.group_count) || 5))
+  });
+  return { entrance: normalizePhase("entrance"), exit: normalizePhase("exit") };
+}
+
 function normalizeEncounters(encounters, count) {
   return Array.from({ length: count }, (_, offset) => {
     const number = offset + 1;
@@ -154,13 +170,23 @@ function normalizeEncounters(encounters, count) {
     return {
       number,
       title: previous?.title || `Encuentro ${number}`,
+      grouping: normalizeGrouping(previous?.grouping),
       questions: Array.from({ length: 3 }, (__, questionOffset) => previous?.questions?.[questionOffset] || blankQuestion(`e${number}q${questionOffset + 1}`, `Pregunta ${questionOffset + 1} de la unidad ${number}`))
     };
   });
 }
 
+function groupingEditor(encounter) {
+  const grouping = normalizeGrouping(encounter.grouping);
+  const phaseEditor = (phase, label) => {
+    const values = grouping[phase];
+    return `<section class="grouping-editor" data-grouping-phase="${phase}"><div class="grouping-editor__header"><strong>${label}</strong><label class="switch-field"><input type="checkbox" data-group-enabled${values.enabled ? " checked" : ""}><span>Sortear grupos</span></label></div><div class="form-grid grouping-editor__fields"><div class="field"><label>Participantes esperados</label><input type="number" data-expected-participants min="1" max="5000" value="${values.expected_participants}" required></div><div class="field"><label>Cantidad de grupos</label><input type="number" data-group-count min="2" max="100" value="${values.group_count}" required></div></div></section>`;
+  };
+  return `<div class="grouping-editor-wrap"><span class="section-kicker">Organización de grupos</span><p class="muted">Configurá el sorteo por separado para cada momento.</p>${phaseEditor("entrance", "Entrada")}${phaseEditor("exit", "Salida")}</div>`;
+}
+
 function renderEditors(encounters, integrative) {
-  $("[data-encounter-editor]").innerHTML = encounters.map(encounter => `<details class="encounter-card" data-encounter-card data-number="${encounter.number}"${encounter.number === 1 ? " open" : ""}><summary><strong>Ticket ${encounter.number}</strong><span>${escapeHtml(encounter.title)}</span></summary><div class="encounter-card__body"><div class="field"><label>Nombre del encuentro</label><input data-encounter-title required maxlength="120" value="${escapeHtml(encounter.title)}"></div>${encounter.questions.map((question, index) => editorQuestion(question, `e${encounter.number}q${index + 1}`, `Pregunta ${index + 1}`)).join("")}</div></details>`).join("");
+  $("[data-encounter-editor]").innerHTML = encounters.map(encounter => `<details class="encounter-card" data-encounter-card data-number="${encounter.number}"${encounter.number === 1 ? " open" : ""}><summary><strong>Ticket ${encounter.number}</strong><span>${escapeHtml(encounter.title)}</span></summary><div class="encounter-card__body"><div class="field"><label>Nombre del encuentro</label><input data-encounter-title required maxlength="120" value="${escapeHtml(encounter.title)}"></div>${groupingEditor(encounter)}${encounter.questions.map((question, index) => editorQuestion(question, `e${encounter.number}q${index + 1}`, `Pregunta ${index + 1}`)).join("")}</div></details>`).join("");
   $("[data-integrative-editor]").innerHTML = editorQuestion(integrative, "integrative", "Pregunta integradora");
 }
 
@@ -175,7 +201,16 @@ function collectQuestion(card, forcedId) {
 function collectEncounters() {
   return $$('[data-encounter-card]').map(card => {
     const number = Number(card.dataset.number);
-    return { number, title: $("[data-encounter-title]", card).value.trim(), questions: $$('[data-editor-question]', card).map((questionCard, index) => collectQuestion(questionCard, `e${number}q${index + 1}`)) };
+    const grouping = {};
+    $$('[data-grouping-phase]', card).forEach(section => {
+      const phase = section.dataset.groupingPhase;
+      const expected = Number($("[data-expected-participants]", section).value);
+      const groupCount = Number($("[data-group-count]", section).value);
+      const enabled = $("[data-group-enabled]", section).checked;
+      if (enabled && groupCount > expected) throw new Error(`En el Ticket ${number} ${phase === "entrance" ? "Entrada" : "Salida"}, la cantidad de grupos no puede superar a los participantes esperados.`);
+      grouping[phase] = { enabled, expected_participants: expected, group_count: groupCount };
+    });
+    return { number, title: $("[data-encounter-title]", card).value.trim(), grouping, questions: $$('[data-editor-question]', card).map((questionCard, index) => collectQuestion(questionCard, `e${number}q${index + 1}`)) };
   });
 }
 
@@ -201,12 +236,34 @@ function renderActivation(course) {
   if (phase) phase.checked = true;
 }
 
+function renderGroupingStatus(course, courseData = { responses: [] }) {
+  const target = $("[data-grouping-status]");
+  if (!target || !course) return;
+  const encounterNumber = Number($("#active-encounter").value || course.active_encounter);
+  const phase = $("[name=active_phase]:checked")?.value || course.active_phase;
+  const encounter = course.encounters.find(item => Number(item.number) === encounterNumber);
+  const grouping = normalizeGrouping(encounter?.grouping)[phase];
+  const responses = (courseData.responses || []).filter(row => Number(row.encounter_number) === encounterNumber && row.phase === phase);
+  const counts = Array.from({ length: grouping.group_count }, (_, index) => responses.filter(row => Number(row.group_number) === index + 1).length);
+  $("#activate-ticket-button").textContent = grouping.enabled ? "Habilitar ticket y sorteo" : "Habilitar este ticket";
+  if (!grouping.enabled) {
+    target.innerHTML = `<strong>Sin sorteo para este ticket</strong><span>Podés activarlo en la configuración del encuentro.</span>`;
+    return;
+  }
+  const estimatedBase = Math.floor(grouping.expected_participants / grouping.group_count);
+  const remainder = grouping.expected_participants % grouping.group_count;
+  const estimate = remainder ? `${grouping.group_count - remainder} grupos de ${estimatedBase} y ${remainder} de ${estimatedBase + 1}` : `${grouping.group_count} grupos de ${estimatedBase}`;
+  target.innerHTML = `<strong>${responses.length} de ${grouping.expected_participants} respuestas</strong><span>${grouping.group_count} grupos · estimación: ${escapeHtml(estimate)}.</span>${responses.length ? `<div class="group-chip-row">${counts.map((count, index) => `<span>Grupo ${index + 1}: ${count}</span>`).join("")}</div>` : ""}`;
+}
+
 function updateStatus(course) {
   const badge = $("[data-course-status]");
   const open = course?.status === "open";
   badge.textContent = course ? (open ? `Abierto · Ticket ${course.active_encounter} ${course.active_phase === "entrance" ? "Entrada" : "Salida"}` : "Curso cerrado") : "Sin configurar";
   badge.className = `status-badge${open ? "" : " status-badge--closed"}`;
-  $("#toggle-course-button").textContent = open ? "Cerrar curso" : "Reabrir curso";
+  $("#toggle-course-button").textContent = course && !open ? "Reabrir curso" : "Cerrar curso";
+  $("#toggle-course-button").disabled = !course;
+  $("#activate-ticket-button").disabled = !course;
 }
 
 function reportTableQuestion(question) {
@@ -253,6 +310,7 @@ async function initAdmin() {
     $("[data-count=participants]").textContent = courseData.participants.length;
     $("[data-count=responses]").textContent = courseData.responses.length;
     $("[data-count=complete]").textContent = report?.fullyCompleted || 0;
+    renderGroupingStatus(course, courseData);
     return report;
   }
 
@@ -265,6 +323,7 @@ async function initAdmin() {
     const draft = course || { ...structuredClone(DEFAULT_COURSE), id: "" };
     fillCourseForm(draft);
     renderActivation(draft);
+    renderGroupingStatus(draft, courseData);
     updateStatus(course);
     await refreshData();
   }
@@ -291,6 +350,8 @@ async function initAdmin() {
   });
 
   document.addEventListener("input", event => { if (event.target.matches("[data-question-options]")) syncCorrectSelect(event.target); });
+  $("#active-encounter").addEventListener("change", () => renderGroupingStatus(course, courseData));
+  $$('[name=active_phase]').forEach(input => input.addEventListener("change", () => renderGroupingStatus(course, courseData)));
 
   $("#course-form").addEventListener("submit", async event => {
     event.preventDefault();
@@ -319,6 +380,7 @@ async function initAdmin() {
     if (!active_phase) return;
     course = await client.updateCourse(course.id, { active_encounter, active_phase });
     updateStatus(course);
+    renderGroupingStatus(course, courseData);
   });
 
   $("#refresh-button").addEventListener("click", refreshData);
