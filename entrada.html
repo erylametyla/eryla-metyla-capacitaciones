@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ticket de entrada de ERYLA METYLA.">
+  <title>Ticket de entrada | ERYLA METYLA</title>
+  <link rel="stylesheet" href="styles.css?v=20260929-3">
+</head>
+<body data-page="entrance">
+  <main class="shell shell--form">
+    <div class="form-nav">
+      <a class="brand-mark" href="index.html" aria-label="ERYLA METYLA · Inicio"><img src="assets/brand/ERYLA_METYLA_Logo_Horizontal.svg" alt=""></a>
+      <a class="back-link" href="index.html"><span aria-hidden="true">←</span> Volver</a>
+    </div>
+    <section class="course-card" data-course-header aria-live="polite"><div class="skeleton skeleton--title"></div><div class="skeleton"></div></section>
+    <section class="form-card" data-form-panel hidden>
+      <header class="form-card__header">
+        <span class="eyebrow" data-ticket-kicker>Antes del encuentro</span>
+        <h1 data-ticket-title>Ticket de entrada</h1>
+        <p>Las respuestas se registran con fecha y se vinculan a tu recorrido.</p>
+      </header>
+      <form id="ticket-form" novalidate>
+        <section data-profile-fields hidden>
+          <span class="section-kicker">Datos del participante</span>
+          <div class="form-grid profile-grid">
+            <div class="field field--full"><label for="full-name">Nombre y apellido</label><input id="full-name" name="full_name" autocomplete="name" maxlength="160"></div>
+            <div class="field"><label for="dni">DNI</label><input id="dni" name="dni" inputmode="numeric" pattern="[0-9 .-]{6,14}" maxlength="14"></div>
+            <div class="field"><label for="email">Correo electrónico</label><input id="email" name="email" type="email" autocomplete="email" required placeholder="nombre@correo.com"></div>
+            <div class="field"><label for="institution">Institución</label><input id="institution" name="institution" maxlength="180"></div>
+            <div class="field"><label for="work-area">Área de trabajo</label><input id="work-area" name="work_area" maxlength="180"></div>
+          </div>
+        </section>
+        <div class="field" data-email-only>
+          <label for="email-repeat">Correo electrónico</label>
+          <input id="email-repeat" name="email_repeat" type="email" autocomplete="email" placeholder="Usá el mismo correo del Ticket 1">
+          <small>Permite asociar esta respuesta a tu recorrido en el curso.</small>
+        </div>
+        <div data-questions></div>
+        <div class="field" data-expectation hidden>
+          <label for="expectation-text">¿Cuál es tu principal expectativa para este curso?</label>
+          <textarea id="expectation-text" name="expectation_text" rows="3" minlength="5" maxlength="500"></textarea>
+        </div>
+        <div class="form-message" data-form-message role="status" aria-live="polite"></div>
+        <button class="button button--primary button--wide" type="submit">Enviar respuesta</button>
+      </form>
+    </section>
+    <section class="notice-card" data-unavailable-panel hidden></section>
+  </main>
+  <script type="module" src="app.js?v=20260929-3"></script>
+</body>
+</html>

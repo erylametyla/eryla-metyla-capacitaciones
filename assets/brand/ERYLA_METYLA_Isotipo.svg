@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Isotipo ERYLA METYLA">
+<defs>
+  <mask id="iso-outer-holes">
+    <rect x="0" y="0" width="320" height="310" fill="white"/>
+    <circle cx="160" cy="25" r="9" fill="black"/><circle cx="268" cy="87.5" r="9" fill="black"/>
+    <circle cx="268" cy="212.5" r="9" fill="black"/><circle cx="160" cy="275" r="9" fill="black"/>
+    <circle cx="52" cy="212.5" r="9" fill="black"/><circle cx="52" cy="87.5" r="9" fill="black"/>
+  </mask>
+  <mask id="iso-inner-holes">
+    <rect x="0" y="0" width="320" height="310" fill="white"/>
+    <circle cx="100" cy="150" r="7" fill="black"/><circle cx="205" cy="108" r="7" fill="black"/><circle cx="210" cy="205" r="7" fill="black"/>
+  </mask>
+</defs>
+<g transform="translate(32 72) scale(3)">
+  <g mask="url(#iso-outer-holes)" fill="none" stroke="#FE5E01" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M160 25L268 87.5V212.5L160 275L52 212.5V87.5Z"/>
+    <g fill="#FE5E01" stroke="none">
+      <circle cx="160" cy="25" r="21"/><circle cx="268" cy="87.5" r="21"/>
+      <circle cx="268" cy="212.5" r="21"/><circle cx="160" cy="275" r="21"/>
+      <circle cx="52" cy="212.5" r="21"/><circle cx="52" cy="87.5" r="21"/>
+    </g>
+  </g>
+  <g mask="url(#iso-inner-holes)" fill="none" stroke="#6A35D6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 150H160L205 108M160 150L210 205"/>
+    <g fill="#6A35D6" stroke="none"><circle cx="100" cy="150" r="18"/><circle cx="205" cy="108" r="18"/><circle cx="210" cy="205" r="18"/></g>
+  </g>
+  <circle cx="160" cy="150" r="20" fill="#6A35D6"/>
+</g>
+</svg>

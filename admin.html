@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Administración de capacitaciones de ERYLA METYLA.">
+  <title>Administración | ERYLA METYLA</title>
+  <link rel="stylesheet" href="styles.css?v=20260929-3">
+</head>
+<body data-page="admin">
+  <main class="shell shell--admin">
+    <div class="admin-topbar">
+      <a class="brand-mark" href="index.html" aria-label="ERYLA METYLA · Inicio"><img src="assets/brand/ERYLA_METYLA_Logo_Horizontal.svg" alt=""></a>
+      <div class="topbar-actions"><a class="back-link" href="index.html">← Inicio</a><button class="button button--quiet" id="logout-button" type="button" hidden>Cerrar sesión</button></div>
+    </div>
+
+    <section class="login-card" id="login-panel" hidden>
+      <img class="brand-logo brand-logo--login" src="assets/brand/ERYLA_METYLA_Logo_Horizontal.svg" alt="ERYLA METYLA Aprendizaje">
+      <span class="eyebrow">Administración protegida</span>
+      <h1>Ingresar con clave</h1>
+      <p>Usá la clave administrativa compartida con capacitadores autorizados.</p>
+      <form id="login-form" novalidate>
+        <div class="field"><label for="access-code">Clave de acceso</label><input id="access-code" name="access_code" type="password" autocomplete="current-password" required minlength="6"></div>
+        <div class="form-message" data-login-message role="status"></div>
+        <button class="button button--primary button--wide" type="submit">Ingresar</button>
+      </form>
+    </section>
+
+    <section id="admin-panel" hidden>
+      <header class="admin-header">
+        <div><span class="eyebrow">ERYLA METYLA · Aprendizaje</span><h1>Panel del curso</h1><p>Configuración por encuentros, participación e informes.</p></div>
+        <span class="status-badge" data-course-status>Sin configurar</span>
+      </header>
+      <div class="demo-banner" data-demo-banner hidden><strong>Modo de demostración.</strong> Los datos se guardan solo en este navegador.</div>
+
+      <section class="admin-grid">
+        <article class="panel-card panel-card--config">
+          <span class="section-kicker">Curso activo</span><h2>Configuración general</h2>
+          <form id="course-form" novalidate>
+            <input type="hidden" name="id">
+            <div class="form-grid">
+              <div class="field field--full"><label for="course-name">Nombre del curso</label><input id="course-name" name="name" required maxlength="120"></div>
+              <div class="field field--full"><label for="instructor">Profesor/a o capacitador/a</label><input id="instructor" name="instructor" required maxlength="120"></div>
+              <div class="field"><label for="hours">Cantidad de horas</label><input id="hours" name="hours" type="number" min="0.5" max="1000" step="0.5" required></div>
+              <div class="field"><label for="modality">Modalidad</label><select id="modality" name="modality" required><option>Presencial</option><option>Online</option><option>Mixto</option></select></div>
+              <div class="field"><label for="start-date">Fecha de inicio</label><input id="start-date" name="start_date" type="date" required></div>
+              <div class="field"><label for="end-date">Fecha de finalización</label><input id="end-date" name="end_date" type="date" required></div>
+              <div class="field"><label for="encounter-count">Cantidad de encuentros</label><input id="encounter-count" name="encounter_count" type="number" min="1" max="12" required><small>Podés configurar entre 1 y 12.</small></div>
+            </div>
+
+            <section class="question-editor">
+              <div class="question-editor__heading"><div><span class="section-kicker">Evaluación</span><h3>Preguntas por encuentro</h3></div></div>
+              <p class="muted">Cada encuentro tiene tres preguntas que se muestran iguales en Entrada y Salida.</p>
+              <div class="encounter-editor" data-encounter-editor></div>
+            </section>
+
+            <section class="question-editor">
+              <span class="section-kicker">Evolución global</span><h3>Pregunta integradora</h3>
+              <p class="muted">Se muestra en Entrada 1 y se repite en la Salida del último encuentro.</p>
+              <div data-integrative-editor></div>
+            </section>
+            <div class="form-message" data-course-message role="status"></div>
+            <button class="button button--primary" type="submit">Guardar configuración</button>
+          </form>
+        </article>
+
+        <div class="admin-side">
+          <article class="panel-card activation-card">
+            <span class="section-kicker">Ticket habilitado</span><h2>Momento del curso</h2>
+            <div class="field"><label for="active-encounter">Encuentro</label><select id="active-encounter"></select></div>
+            <fieldset class="field"><legend>Etapa</legend><div class="segmented segmented--two">
+              <label><input type="radio" name="active_phase" value="entrance"><span>Entrada</span></label>
+              <label><input type="radio" name="active_phase" value="exit"><span>Salida</span></label>
+            </div></fieldset>
+            <button class="button button--primary button--wide" id="activate-ticket-button" type="button">Habilitar este ticket</button>
+            <p class="microcopy">Solo el ticket seleccionado aceptará respuestas.</p>
+          </article>
+
+          <article class="panel-card">
+            <div class="panel-card__header"><div><span class="section-kicker">Participación</span><h2>Resumen</h2></div><button class="icon-button" id="refresh-button" type="button" aria-label="Actualizar">↻</button></div>
+            <div class="metric-grid"><div><strong data-count="participants">0</strong><span>Participantes</span></div><div><strong data-count="responses">0</strong><span>Tickets</span></div><div><strong data-count="complete">0</strong><span>Recorridos completos</span></div></div>
+            <div class="link-row"><a href="entrada.html" target="_blank" rel="noopener">Abrir entrada</a><a href="salida.html" target="_blank" rel="noopener">Abrir salida</a></div>
+          </article>
+
+          <article class="panel-card">
+            <span class="section-kicker">Resultados</span><h2>Informe automático</h2>
+            <p class="muted">Compara Entrada y Salida por encuentro y la pregunta integradora entre el inicio y el cierre.</p>
+            <div class="action-stack"><button class="button button--secondary" id="view-report-button" type="button">Ver informe</button><button class="button button--secondary" id="download-report-button" type="button">Descargar informe</button><button class="button button--secondary" id="download-data-button" type="button">Descargar respuestas CSV</button></div>
+          </article>
+
+          <article class="panel-card panel-card--danger">
+            <span class="section-kicker">Administración</span><h2>Estado y datos</h2>
+            <div class="action-stack"><button class="button button--warning" id="toggle-course-button" type="button">Cerrar curso</button><button class="button button--danger" id="reset-course-button" type="button">Borrar respuestas</button></div>
+            <p class="microcopy">Borrar elimina participantes y tickets, pero conserva la configuración.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="report-dialog" id="report-dialog"><div class="dialog-topbar"><strong>Informe estadístico</strong><button class="icon-button" type="button" data-close-dialog>×</button></div><div class="report-content" data-report-content></div><div class="dialog-actions"><button class="button button--secondary" type="button" data-print-report>Imprimir / guardar PDF</button><button class="button button--primary" type="button" data-close-dialog>Cerrar</button></div></dialog>
+  <dialog class="confirm-dialog" id="confirm-dialog"><form method="dialog"><span class="eyebrow">Confirmación</span><h2 data-confirm-title>Confirmar acción</h2><p data-confirm-text></p><label class="confirm-input-wrap" data-confirm-input-wrap hidden>Escribí <strong>BORRAR</strong> para continuar<input data-confirm-input autocomplete="off"></label><div class="dialog-actions"><button class="button button--quiet" value="cancel">Cancelar</button><button class="button button--danger" value="confirm" data-confirm-button>Confirmar</button></div></form></dialog>
+  <script type="module" src="app.js?v=20260929-3"></script>
+</body>
+</html>

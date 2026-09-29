@@ -1,0 +1,31 @@
+ERYLA METYLA — APRENDIZAJE
+========================================
+
+IDEA DE MARCA
+Conocimiento conectado, evolución y aprendizaje aplicado.
+El índigo sostiene la identidad intelectual; el violeta vivo señala circulación de ideas entre nodos.
+
+COLORES OFICIALES
+- ERYLA / marca madre: #FE5E01
+- METYLA / tono principal oscuro: #4B2E83
+- APRENDIZAJE / acento y red interna: #6A35D6
+- Texto neutro: #20252B
+- Fondo claro: #F5F6F7
+
+ARQUITECTURA DEL LOGO
+- El hexágono exterior conserva siempre la misma geometría y el naranja ERYLA.
+- La red interna y sus tres nodos secundarios utilizan el color de acento del universo.
+- ERYLA mantiene su dibujo tipográfico exclusivo y su Y con centro hexagonal vacío.
+- El nombre METYLA utiliza el tono oscuro para no competir con ERYLA.
+- El descriptor APRENDIZAJE utiliza el acento brillante con menor peso visual.
+
+ARCHIVOS
+- Logo_Horizontal.svg / .png: versión principal.
+- Isotipo.svg / .png: símbolo sin texto.
+- Guia_Visual.svg / .png: concepto, paleta y regla de aplicación.
+
+RESTRICCIONES
+- No cambiar la posición o cantidad de nodos.
+- No recolorear ERYLA ni el hexágono exterior.
+- No usar degradados, sombras o efectos tridimensionales.
+- Mantener siempre suficiente contraste y área libre alrededor del conjunto.

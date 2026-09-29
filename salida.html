@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ticket de salida de ERYLA METYLA.">
+  <title>Ticket de salida | ERYLA METYLA</title>
+  <link rel="stylesheet" href="styles.css?v=20260929-3">
+</head>
+<body data-page="exit">
+  <main class="shell shell--form">
+    <div class="form-nav">
+      <a class="brand-mark" href="index.html" aria-label="ERYLA METYLA · Inicio"><img src="assets/brand/ERYLA_METYLA_Logo_Horizontal.svg" alt=""></a>
+      <a class="back-link" href="index.html"><span aria-hidden="true">←</span> Volver</a>
+    </div>
+    <section class="course-card" data-course-header aria-live="polite"><div class="skeleton skeleton--title"></div><div class="skeleton"></div></section>
+    <section class="form-card" data-form-panel hidden>
+      <header class="form-card__header">
+        <span class="eyebrow" data-ticket-kicker>Al finalizar el encuentro</span>
+        <h1 data-ticket-title>Ticket de salida</h1>
+        <p>Usá el mismo correo con el que completaste el Ticket 1.</p>
+      </header>
+      <form id="ticket-form" novalidate>
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input id="email" name="email" type="email" autocomplete="email" required placeholder="nombre@correo.com">
+        </div>
+        <div data-questions></div>
+        <section data-final-fields hidden>
+          <fieldset class="field">
+            <legend>¿En qué medida el curso cumplió tu expectativa inicial?</legend>
+            <div class="segmented segmented--three">
+              <label><input type="radio" name="expectation_fulfillment" value="Totalmente"><span>Totalmente</span></label>
+              <label><input type="radio" name="expectation_fulfillment" value="Parcialmente"><span>Parcialmente</span></label>
+              <label><input type="radio" name="expectation_fulfillment" value="No cumplió"><span>No cumplió</span></label>
+            </div>
+          </fieldset>
+        </section>
+        <fieldset class="field scale-field">
+          <legend>¿Qué tan útil te resultó este encuentro?</legend>
+          <div class="scale" role="radiogroup" aria-label="Utilidad del encuentro">
+            <span class="scale__hint">Poco</span>
+            <label><input type="radio" name="course_usefulness" value="1" required><span>1</span></label>
+            <label><input type="radio" name="course_usefulness" value="2"><span>2</span></label>
+            <label><input type="radio" name="course_usefulness" value="3"><span>3</span></label>
+            <label><input type="radio" name="course_usefulness" value="4"><span>4</span></label>
+            <label><input type="radio" name="course_usefulness" value="5"><span>5</span></label>
+            <span class="scale__hint">Mucho</span>
+          </div>
+        </fieldset>
+        <div class="form-message" data-form-message role="status" aria-live="polite"></div>
+        <button class="button button--primary button--wide" type="submit">Enviar respuesta</button>
+      </form>
+    </section>
+    <section class="notice-card" data-unavailable-panel hidden></section>
+  </main>
+  <script type="module" src="app.js?v=20260929-3"></script>
+</body>
+</html>
