@@ -104,6 +104,8 @@ img, svg { max-width: 100%; }
 .admin-link { margin: 26px 0 0; text-align: center; font-size: 0.9rem; }
 .admin-link a, .back-link { color: var(--muted); text-underline-offset: 3px; }
 .back-link { display: inline-flex; gap: 8px; align-items: center; margin-bottom: 18px; font-size: 0.9rem; }
+.ticket-bottom-nav { display: flex; justify-content: center; padding: 28px 0 0; }
+.ticket-bottom-nav .back-link { margin: 0; padding: 10px 14px; }
 
 .course-card, .form-card, .notice-card, .login-card, .panel-card {
   border: 1px solid var(--line);

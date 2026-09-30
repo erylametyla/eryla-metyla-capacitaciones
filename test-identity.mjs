@@ -11,6 +11,8 @@ const [app, data, entrance, exit, migration] = await Promise.all([
 
 assert.match(entrance, /name="dni_repeat"/);
 assert.match(exit, /name="dni_repeat"/);
+assert.match(entrance, /class="ticket-bottom-nav"/);
+assert.match(exit, /class="ticket-bottom-nav"/);
 assert.doesNotMatch(entrance, /name="email_repeat"/);
 assert.doesNotMatch(exit, /name="email"/);
 assert.match(app, /values\.get\("dni_repeat"\)/);

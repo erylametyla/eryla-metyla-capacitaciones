@@ -43,6 +43,7 @@ Para actualizar una instalación anterior a la función de grupos, ejecutar una 
 Para agregar expectativas por unidad y devoluciones del capacitador a una instalación existente, ejecutar una vez `supabase-feedback-migration.sql`.
 Para permitir activar u ocultar preguntas en una instalación existente, ejecutar una vez `supabase-question-visibility-migration.sql`.
 Para vincular los tickets mediante DNI y permitir correos institucionales repetidos, ejecutar una vez `supabase-dni-identity-migration.sql`.
+Para cargar una muestra idempotente de 50 participantes ficticios en todos los tickets del curso activo, ejecutar `supabase-demo-50.sql`.
 
 ## Privacidad
 
