@@ -45,6 +45,17 @@ assert.equal(report.encounters[1].satisfaction.mean, 5);
 assert.equal(report.encounters[1].unitExpectations[0], "Aplicar estrategias en el aula");
 assert.equal(report.trainerFeedback.improvements[0], "Agregar más casos prácticos");
 
+const hiddenReport = buildReportData({
+  ...course,
+  encounters: course.encounters.map(encounter => ({
+    ...encounter,
+    questions: encounter.questions.map(question => ({ ...question, enabled: false }))
+  })),
+  integrative_question: { ...integrative, enabled: false }
+}, { participants, responses });
+assert.equal(hiddenReport.encounters[0].questions.length, 0);
+assert.equal(hiddenReport.integrative, null);
+
 const csv = buildCsvData(course, { participants, responses });
 assert.equal(csv.rows.length, 2);
 assert.ok(csv.headers.includes("nombre_y_apellido"));

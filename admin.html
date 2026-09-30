@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Administración de capacitaciones de ERYLA METYLA.">
   <title>Administración | ERYLA METYLA</title>
-  <link rel="stylesheet" href="styles.css?v=20260930-1">
+  <link rel="stylesheet" href="styles.css?v=20260930-3">
 </head>
 <body data-page="admin">
   <main class="shell shell--admin">
@@ -50,13 +50,13 @@
 
             <section class="question-editor">
               <div class="question-editor__heading"><div><span class="section-kicker">Evaluación</span><h3>Preguntas por encuentro</h3></div></div>
-              <p class="muted">Cada encuentro tiene tres preguntas que se muestran iguales en Entrada y Salida.</p>
+              <p class="muted">Cada encuentro tiene tres preguntas para Entrada y Salida. Usá el control Visible/Oculta de cada pregunta para mostrarla o conservarla sin incluirla en el ticket.</p>
               <div class="encounter-editor" data-encounter-editor></div>
             </section>
 
             <section class="question-editor">
               <span class="section-kicker">Evolución global</span><h3>Pregunta integradora</h3>
-              <p class="muted">Se muestra en Entrada 1 y se repite en la Salida del último encuentro.</p>
+              <p class="muted">Se muestra en Entrada 1 y se repite en la Salida del último encuentro mientras esté marcada como Visible.</p>
               <div data-integrative-editor></div>
             </section>
             <div class="form-message" data-course-message role="status"></div>
@@ -85,8 +85,9 @@
 
           <article class="panel-card">
             <span class="section-kicker">Resultados</span><h2>Informe automático</h2>
-            <p class="muted">Compara Entrada y Salida por encuentro y la pregunta integradora entre el inicio y el cierre.</p>
-            <div class="action-stack"><button class="button button--secondary" id="view-report-button" type="button">Ver informe</button><button class="button button--secondary" id="download-report-button" type="button">Descargar informe</button><button class="button button--secondary" id="download-data-button" type="button">Descargar respuestas CSV</button></div>
+            <p class="muted">Elegí un resumen general, por Ticket o por etapa de Entrada/Salida.</p>
+            <div class="field report-scope-field"><label for="report-scope">Resumen</label><select id="report-scope"></select></div>
+            <div class="action-stack"><button class="button button--secondary" id="view-report-button" type="button">Ver resumen</button><button class="button button--secondary" id="download-report-button" type="button">Descargar resumen</button><button class="button button--secondary" id="download-data-button" type="button">Descargar respuestas CSV</button></div>
           </article>
 
           <article class="panel-card panel-card--danger">
@@ -101,6 +102,6 @@
 
   <dialog class="report-dialog" id="report-dialog"><div class="dialog-topbar"><strong>Informe estadístico</strong><button class="icon-button" type="button" data-close-dialog>×</button></div><div class="report-content" data-report-content></div><div class="dialog-actions"><button class="button button--secondary" type="button" data-print-report>Imprimir / guardar PDF</button><button class="button button--primary" type="button" data-close-dialog>Cerrar</button></div></dialog>
   <dialog class="confirm-dialog" id="confirm-dialog"><form method="dialog"><span class="eyebrow">Confirmación</span><h2 data-confirm-title>Confirmar acción</h2><p data-confirm-text></p><label class="confirm-input-wrap" data-confirm-input-wrap hidden>Escribí <strong>BORRAR</strong> para continuar<input data-confirm-input autocomplete="off"></label><div class="dialog-actions"><button class="button button--quiet" value="cancel">Cancelar</button><button class="button button--danger" value="confirm" data-confirm-button>Confirmar</button></div></form></dialog>
-  <script type="module" src="app.js?v=20260930-1"></script>
+  <script type="module" src="app.js?v=20260930-3"></script>
 </body>
 </html>

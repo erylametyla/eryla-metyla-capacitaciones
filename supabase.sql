@@ -110,7 +110,8 @@ returns boolean language sql immutable
 as $$
   select jsonb_typeof(answer_data) = 'object' and not exists (
     select 1 from jsonb_array_elements(required_questions) question
-    where nullif(trim(answer_data->>(question->>'id')), '') is null
+    where coalesce((question->>'enabled')::boolean, true)
+      and nullif(trim(answer_data->>(question->>'id')), '') is null
   );
 $$;
 

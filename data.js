@@ -1,8 +1,9 @@
-import { CONFIG } from "./config.js?v=20260930-1";
+import { CONFIG } from "./config.js?v=20260930-3";
 
 function question(id, label) {
   return {
     id,
+    enabled: true,
     question: label,
     options: ["Opción A", "Opción B", "Opción C"],
     correct_answer: "Opción A"

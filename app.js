@@ -1,6 +1,6 @@
-import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-1";
-import { buildReportData } from "./stats.js?v=20260930-1";
-import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260930-1";
+import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-3";
+import { buildReportData } from "./stats.js?v=20260930-3";
+import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260930-3";
 
 const client = new DataClient();
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -83,8 +83,8 @@ async function initTicket(phase) {
     const firstEntrance = phase === "entrance" && Number(course.active_encounter) === 1;
     const unitEntrance = phase === "entrance" && Number(course.active_encounter) > 1;
     const finalExit = phase === "exit" && Number(course.active_encounter) === Number(course.encounter_count);
-    const questions = [...encounter.questions];
-    if (firstEntrance || finalExit) questions.push(course.integrative_question);
+    const questions = (encounter.questions || []).filter(question => question.enabled !== false);
+    if ((firstEntrance || finalExit) && course.integrative_question?.enabled !== false) questions.push(course.integrative_question);
 
     $("[data-ticket-kicker]").textContent = `${encounter.title} · ${phase === "entrance" ? "Antes de comenzar" : "Al finalizar"}`;
     $("[data-ticket-title]").textContent = `Ticket ${course.active_encounter} · ${phase === "entrance" ? "Entrada" : "Salida"}`;
@@ -154,11 +154,17 @@ async function initTicket(phase) {
 function editorQuestion(question, id, label) {
   const options = (question.options || []).join("\n");
   const optionTags = (question.options || []).map(option => `<option${option === question.correct_answer ? " selected" : ""}>${escapeHtml(option)}</option>`).join("");
-  return `<div class="question-editor-card" data-editor-question data-question-id="${escapeHtml(id)}"><div class="question-editor-card__header"><strong>${escapeHtml(label)}</strong></div><div class="field"><label>Enunciado</label><input data-question-text maxlength="240" required value="${escapeHtml(question.question)}"></div><div class="field"><label>Opciones de respuesta</label><textarea data-question-options rows="4" required>${escapeHtml(options)}</textarea><small>Una opción por línea.</small></div><div class="field"><label>Respuesta correcta</label><select data-correct-answer required>${optionTags}</select></div></div>`;
+  const enabled = question.enabled !== false;
+  return `<div class="question-editor-card${enabled ? "" : " question-editor-card--disabled"}" data-editor-question data-question-id="${escapeHtml(id)}"><div class="question-editor-card__header"><strong>${escapeHtml(label)}</strong><label class="question-toggle"><input type="checkbox" data-question-enabled${enabled ? " checked" : ""}><span>${enabled ? "Visible" : "Oculta"}</span></label></div><div class="field"><label>Enunciado</label><input data-question-text maxlength="240" required value="${escapeHtml(question.question)}"></div><div class="field"><label>Opciones de respuesta</label><textarea data-question-options rows="4" required>${escapeHtml(options)}</textarea><small>Una opción por línea.</small></div><div class="field"><label>Respuesta correcta</label><select data-correct-answer required>${optionTags}</select></div></div>`;
 }
 
 function blankQuestion(id, label) {
-  return { id, question: label, options: ["Opción A", "Opción B", "Opción C"], correct_answer: "Opción A" };
+  return { id, enabled: true, question: label, options: ["Opción A", "Opción B", "Opción C"], correct_answer: "Opción A" };
+}
+
+function normalizeQuestion(question, id, label) {
+  const fallback = blankQuestion(id, label);
+  return { ...fallback, ...(question || {}), id, enabled: question?.enabled !== false };
 }
 
 function normalizeGrouping(value = {}) {
@@ -178,7 +184,7 @@ function normalizeEncounters(encounters, count) {
       number,
       title: previous?.title || `Encuentro ${number}`,
       grouping: normalizeGrouping(previous?.grouping),
-      questions: Array.from({ length: 3 }, (__, questionOffset) => previous?.questions?.[questionOffset] || blankQuestion(`e${number}q${questionOffset + 1}`, `Pregunta ${questionOffset + 1} de la unidad ${number}`))
+      questions: Array.from({ length: 3 }, (__, questionOffset) => normalizeQuestion(previous?.questions?.[questionOffset], `e${number}q${questionOffset + 1}`, `Pregunta ${questionOffset + 1} de la unidad ${number}`))
     };
   });
 }
@@ -194,7 +200,7 @@ function groupingEditor(encounter) {
 
 function renderEditors(encounters, integrative) {
   $("[data-encounter-editor]").innerHTML = encounters.map(encounter => `<details class="encounter-card" data-encounter-card data-number="${encounter.number}"${encounter.number === 1 ? " open" : ""}><summary><strong>Ticket ${encounter.number}</strong><span>${escapeHtml(encounter.title)}</span></summary><div class="encounter-card__body"><div class="field"><label>Nombre del encuentro</label><input data-encounter-title required maxlength="120" value="${escapeHtml(encounter.title)}"></div>${groupingEditor(encounter)}${encounter.questions.map((question, index) => editorQuestion(question, `e${encounter.number}q${index + 1}`, `Pregunta ${index + 1}`)).join("")}</div></details>`).join("");
-  $("[data-integrative-editor]").innerHTML = editorQuestion(integrative, "integrative", "Pregunta integradora");
+  $("[data-integrative-editor]").innerHTML = editorQuestion(normalizeQuestion(integrative, "integrative", "Pregunta integradora del curso"), "integrative", "Pregunta integradora");
 }
 
 function collectQuestion(card, forcedId) {
@@ -202,7 +208,7 @@ function collectQuestion(card, forcedId) {
   const correct = $("[data-correct-answer]", card).value;
   if (options.length < 2) throw new Error("Cada pregunta necesita al menos dos opciones.");
   if (!options.includes(correct)) throw new Error("Seleccioná una respuesta correcta válida.");
-  return { id: forcedId, question: $("[data-question-text]", card).value.trim(), options, correct_answer: correct };
+  return { id: forcedId, enabled: $("[data-question-enabled]", card).checked, question: $("[data-question-text]", card).value.trim(), options, correct_answer: correct };
 }
 
 function collectEncounters() {
@@ -243,6 +249,15 @@ function renderActivation(course) {
   if (phase) phase.checked = true;
 }
 
+function renderReportScopes(course) {
+  const select = $("#report-scope");
+  if (!select) return;
+  select.innerHTML = `<option value="general">General · Curso completo</option>${course.encounters.map(encounter => {
+    const label = `Ticket ${encounter.number} · ${escapeHtml(encounter.title)}`;
+    return `<option value="ticket:${encounter.number}:both">${label} · Entrada y Salida</option><option value="ticket:${encounter.number}:entrance">${label} · Solo Entrada</option><option value="ticket:${encounter.number}:exit">${label} · Solo Salida</option>`;
+  }).join("")}`;
+}
+
 function renderGroupingStatus(course, courseData = { responses: [] }) {
   const target = $("[data-grouping-status]");
   if (!target || !course) return;
@@ -277,6 +292,15 @@ function reportTableQuestion(question) {
   return `<tr><td>${escapeHtml(question.question)}</td><td>${question.entrance.correct}/${question.entrance.n}<br><span class="muted">${percent(question.entrance.share)}</span></td><td>${question.exit.correct}/${question.exit.n}<br><span class="muted">${percent(question.exit.share)}</span></td><td>${question.change >= 0 ? "+" : ""}${percent(question.change)}</td><td>${question.improved} / ${question.unchanged} / ${question.worsened}</td></tr>`;
 }
 
+function phaseReportTable(encounter, phase) {
+  const phaseLabel = phase === "entrance" ? "Entrada" : "Salida";
+  if (!encounter.questions.length) return `<p class="muted">No hay preguntas técnicas activas en esta etapa.</p>`;
+  return `<table class="report-table"><thead><tr><th>Pregunta</th><th>Correctas</th><th>Porcentaje</th></tr></thead><tbody>${encounter.questions.map(question => {
+    const result = question[phase];
+    return `<tr><td>${escapeHtml(question.question)}</td><td>${result.correct}/${result.n}</td><td>${percent(result.share)}</td></tr>`;
+  }).join("")}</tbody></table><p class="report-meta">Resultados correspondientes únicamente a ${phaseLabel}.</p>`;
+}
+
 function barList(rows) {
   if (!rows.length) return `<p class="muted">Sin datos todavía.</p>`;
   return `<div class="bar-list">${rows.map(row => `<div class="bar-row"><span>${escapeHtml(row.label)}</span><div class="bar-track"><span style="width:${Math.min(row.share, 100)}%"></span></div><strong>${row.count}</strong></div>`).join("")}</div>`;
@@ -284,7 +308,9 @@ function barList(rows) {
 
 function baseReportHtml(report) {
   const expectationRows = report.expectations.filter(row => row.count).map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${row.count}</td><td>${row.counts.Totalmente}</td><td>${row.counts.Parcialmente}</td><td>${row.counts["No cumplió"]}</td></tr>`).join("");
-  return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Informe de capacitación</span><h1>${escapeHtml(report.course.name)}</h1><div class="report-meta">Profesor/a: ${escapeHtml(report.course.instructor)} · ${escapeHtml(report.course.modality)} · ${escapeHtml(report.course.hours)} horas<br>Período: ${dateOnly(report.course.start_date)} — ${dateOnly(report.course.end_date)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${report.participants.length}</strong><span>Participantes</span></div><div class="report-card"><strong>${report.responses.length}</strong><span>Tickets respondidos</span></div><div class="report-card"><strong>${report.fullyCompleted}</strong><span>Recorridos completos</span></div><div class="report-card"><strong>${report.course.encounters.length}</strong><span>Encuentros</span></div></div><h2>Evolución por encuentro</h2>${report.encounters.map(encounter => `<section class="report-section"><h3>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h3><p class="report-meta">Entradas: ${encounter.entranceCount} · Salidas: ${encounter.exitCount} · Vinculadas: ${encounter.paired} · Seguimiento: ${percent(encounter.completionRate)}</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table></section>`).join("")}<h2>Pregunta integradora: inicio vs. cierre</h2><p class="report-note">Compara la Entrada del Ticket 1 con la Salida del Ticket ${report.course.encounters.length}, únicamente en participantes vinculados.</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada 1</th><th>Salida ${report.course.encounters.length}</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${reportTableQuestion(report.integrative)}</tbody></table><h2>Perfil institucional</h2><h3>Instituciones</h3>${barList(report.institutions)}<h3>Áreas de trabajo</h3>${barList(report.workAreas)}<h2>Expectativas iniciales y cumplimiento final</h2>${expectationRows ? `<table class="report-table"><thead><tr><th>Expectativa</th><th>Inicial</th><th>Totalmente</th><th>Parcialmente</th><th>No cumplió</th></tr></thead><tbody>${expectationRows}</tbody></table>` : `<p class="muted">Sin respuestas suficientes.</p>`}</article>`;
+  const integrativeSection = report.integrative ? `<h2>Pregunta integradora: inicio vs. cierre</h2><p class="report-note">Compara la Entrada del Ticket 1 con la Salida del Ticket ${report.course.encounters.length}, únicamente en participantes vinculados.</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada 1</th><th>Salida ${report.course.encounters.length}</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${reportTableQuestion(report.integrative)}</tbody></table>` : "";
+  const encounterSections = report.encounters.map(encounter => `<section class="report-section"><h3>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h3><p class="report-meta">Entradas: ${encounter.entranceCount} · Salidas: ${encounter.exitCount} · Vinculadas: ${encounter.paired} · Seguimiento: ${percent(encounter.completionRate)}</p>${encounter.questions.length ? `<table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table>` : `<p class="muted">No hay preguntas técnicas activas en este encuentro.</p>`}</section>`).join("");
+  return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Informe de capacitación</span><h1>${escapeHtml(report.course.name)}</h1><div class="report-meta">Profesor/a: ${escapeHtml(report.course.instructor)} · ${escapeHtml(report.course.modality)} · ${escapeHtml(report.course.hours)} horas<br>Período: ${dateOnly(report.course.start_date)} — ${dateOnly(report.course.end_date)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${report.participants.length}</strong><span>Participantes</span></div><div class="report-card"><strong>${report.responses.length}</strong><span>Tickets respondidos</span></div><div class="report-card"><strong>${report.fullyCompleted}</strong><span>Recorridos completos</span></div><div class="report-card"><strong>${report.course.encounters.length}</strong><span>Encuentros</span></div></div><h2>Evolución por encuentro</h2>${encounterSections}${integrativeSection}<h2>Perfil institucional</h2><h3>Instituciones</h3>${barList(report.institutions)}<h3>Áreas de trabajo</h3>${barList(report.workAreas)}<h2>Expectativas iniciales y cumplimiento final</h2>${expectationRows ? `<table class="report-table"><thead><tr><th>Expectativa</th><th>Inicial</th><th>Totalmente</th><th>Parcialmente</th><th>No cumplió</th></tr></thead><tbody>${expectationRows}</tbody></table>` : `<p class="muted">Sin respuestas suficientes.</p>`}</article>`;
 }
 
 function responseList(rows) {
@@ -298,6 +324,37 @@ function reportHtml(report) {
   return baseReportHtml(report)
     .replace("Expectativas iniciales y cumplimiento final", "Expectativa general y cumplimiento final")
     .replace("</article>", `${additional}</article>`);
+}
+
+function scopedReportHtml(report, scope) {
+  if (!scope || scope === "general") return reportHtml(report);
+  const [, numberText, phase = "both"] = scope.split(":");
+  const number = Number(numberText);
+  const encounter = report.encounters.find(item => Number(item.number) === number);
+  if (!encounter) return reportHtml(report);
+  const phaseLabel = phase === "entrance" ? "Entrada" : phase === "exit" ? "Salida" : "Entrada y Salida";
+  const selectedResponses = report.responses.filter(row => Number(row.encounter_number) === number && (phase === "both" || row.phase === phase));
+  const participantCount = new Set(selectedResponses.map(row => row.participant_id)).size;
+  const questions = phase === "both"
+    ? (encounter.questions.length ? `<table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table>` : `<p class="muted">No hay preguntas técnicas activas en este Ticket.</p>`)
+    : phaseReportTable(encounter, phase);
+  const entranceDetails = (phase === "entrance" || phase === "both") ? (number === 1
+    ? `<h2>Expectativa general inicial</h2>${barList(report.expectations.filter(row => row.count).map(row => ({ label: row.label, count: row.count, share: report.participants.length ? row.count / report.participants.length * 100 : 0 })))}`
+    : `<h2>Expectativas escritas de la unidad</h2>${responseList(encounter.unitExpectations)}`) : "";
+  const exitDetails = (phase === "exit" || phase === "both") ? `<h2>Satisfacción con la unidad</h2><p class="report-meta">Promedio: ${encounter.satisfaction.mean === null ? "—" : `${encounter.satisfaction.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`} · Respuestas: ${encounter.satisfaction.n}</p>${barList(encounter.satisfactionDistribution)}${number === report.course.encounters.length ? `<h2>Mejora del capacitador y del curso</h2><h3>Aspectos que debería mantener</h3>${responseList(report.trainerFeedback.strengths)}<h3>Oportunidades de mejora</h3>${responseList(report.trainerFeedback.improvements)}` : ""}` : "";
+  return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Resumen por Ticket</span><h1>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h1><div class="report-meta">${escapeHtml(report.course.name)} · ${phaseLabel}<br>Profesor/a: ${escapeHtml(report.course.instructor)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${participantCount}</strong><span>Participantes</span></div><div class="report-card"><strong>${selectedResponses.length}</strong><span>Respuestas</span></div><div class="report-card"><strong>${phase === "exit" ? encounter.exitCount : encounter.entranceCount}</strong><span>${phase === "exit" ? "Salidas" : "Entradas"}</span></div><div class="report-card"><strong>${encounter.paired}</strong><span>Pares Entrada/Salida</span></div></div><h2>Aprendizaje</h2>${questions}${entranceDetails}${exitDetails}</article>`;
+}
+
+function selectedReport(report) {
+  const scope = $("#report-scope")?.value || "general";
+  if (scope === "general") return { html: reportHtml(report), title: report.course.name, filename: `resumen-general-${report.course.name}` };
+  const [, number, phase] = scope.split(":");
+  const phaseSlug = phase === "both" ? "entrada-salida" : phase === "entrance" ? "entrada" : "salida";
+  return { html: scopedReportHtml(report, scope), title: `${report.course.name} · Ticket ${number} · ${phaseSlug}`, filename: `resumen-ticket-${number}-${phaseSlug}-${report.course.name}` };
+}
+
+function filenameSlug(value) {
+  return String(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 const REPORT_CSS = `:root{font-family:Arial,sans-serif;color:#20252b}body{margin:0;background:#f5f6f7}.report-paper{max-width:900px;margin:24px auto;padding:38px;background:#fff}.eyebrow{color:#fe5e01;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-size:32px;margin:5px 0 8px}h2{font-size:19px;margin:30px 0 12px;padding-top:18px;border-top:1px solid #ded9e8}h3{font-size:15px}.report-meta,.muted{color:#626973;font-size:12px;line-height:1.5}.report-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:22px 0}.report-card{padding:13px;border:1px solid #ded9e8;border-radius:9px}.report-card strong{display:block;font-size:23px}.report-card span{color:#626973;font-size:11px}.report-table{width:100%;border-collapse:collapse;font-size:12px}.report-table th,.report-table td{padding:8px 6px;border-bottom:1px solid #ded9e8;text-align:right}.report-table th:first-child,.report-table td:first-child{text-align:left}.report-note{padding:11px 13px;border-left:3px solid #6a35d6;background:#f0eafb;font-size:12px}.bar-list{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:180px 1fr 50px;align-items:center;gap:9px;font-size:12px}.bar-track{height:8px;overflow:hidden;border-radius:99px;background:#e9e5ef}.bar-track span{display:block;height:100%;background:#6a35d6}@media(max-width:650px){.report-paper{margin:0;padding:20px 14px}.report-cards{grid-template-columns:repeat(2,1fr)}.report-table{font-size:10px}.bar-row{grid-template-columns:110px 1fr 35px}}@media print{body{background:#fff}.report-paper{margin:0;padding:0}}`;
@@ -343,6 +400,7 @@ async function initAdmin() {
     const draft = course || { ...structuredClone(DEFAULT_COURSE), id: "" };
     fillCourseForm(draft);
     renderActivation(draft);
+    renderReportScopes(draft);
     renderGroupingStatus(draft, courseData);
     updateStatus(course);
     await refreshData();
@@ -370,6 +428,12 @@ async function initAdmin() {
   });
 
   document.addEventListener("input", event => { if (event.target.matches("[data-question-options]")) syncCorrectSelect(event.target); });
+  document.addEventListener("change", event => {
+    if (!event.target.matches("[data-question-enabled]")) return;
+    const card = event.target.closest("[data-editor-question]");
+    card.classList.toggle("question-editor-card--disabled", !event.target.checked);
+    $(".question-toggle span", card).textContent = event.target.checked ? "Visible" : "Oculta";
+  });
   $("#active-encounter").addEventListener("change", () => renderGroupingStatus(course, courseData));
   $$('[name=active_phase]').forEach(input => input.addEventListener("change", () => renderGroupingStatus(course, courseData)));
 
@@ -388,7 +452,7 @@ async function initAdmin() {
         status: course?.status || "open", active_encounter: Math.min(course?.active_encounter || 1, encounters.length), active_phase: course?.active_phase || "entrance",
         encounters, integrative_question: integrative
       });
-      fillCourseForm(course); renderActivation(course); updateStatus(course); await refreshData();
+      fillCourseForm(course); renderActivation(course); renderReportScopes(course); updateStatus(course); await refreshData();
       setMessage(message, "Configuración guardada.", "success");
     } catch (error) { setMessage(message, error.message); }
   });
@@ -406,8 +470,9 @@ async function initAdmin() {
   $("#refresh-button").addEventListener("click", refreshData);
   $("#view-report-button").addEventListener("click", async () => {
     if (!course) return;
-    const content = reportHtml(await refreshData());
-    $("[data-report-content]").innerHTML = content;
+    const report = selectedReport(await refreshData());
+    $("[data-report-content]").innerHTML = report.html;
+    $(".dialog-topbar strong").textContent = report.title;
     $("#report-dialog").showModal();
   });
   $$('[data-close-dialog]').forEach(button => button.addEventListener("click", () => $("#report-dialog").close()));
@@ -418,8 +483,9 @@ async function initAdmin() {
   });
   $("#download-report-button").addEventListener("click", async () => {
     if (!course) return;
-    const html = fullReportDocument(reportHtml(await refreshData()), course.name);
-    downloadHtml(`informe-${course.name.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.html`, html);
+    const report = selectedReport(await refreshData());
+    const html = fullReportDocument(report.html, report.title);
+    downloadHtml(`${filenameSlug(report.filename)}.html`, html);
   });
   $("#download-data-button").addEventListener("click", async () => {
     if (!course) return;

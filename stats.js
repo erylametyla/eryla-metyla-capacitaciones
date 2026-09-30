@@ -119,7 +119,7 @@ export function buildReportData(course, data) {
       exitCount: exits.size,
       paired,
       completionRate: entrances.size ? paired / entrances.size * 100 : 0,
-      questions: (encounter.questions || []).map(question => compareQuestion(question, entrances, exits)),
+      questions: (encounter.questions || []).filter(question => question.enabled !== false).map(question => compareQuestion(question, entrances, exits)),
       usefulness: describe([...exits.values()].map(row => row.course_usefulness)),
       unitExpectations: [...entrances.values()].map(row => row.unit_expectation_text).filter(Boolean),
       satisfaction: describe([...exits.values()].map(row => row.unit_satisfaction)),
@@ -127,7 +127,7 @@ export function buildReportData(course, data) {
     };
   });
   const lastNumber = course.encounters?.length || 1;
-  const integrative = compareQuestion(
+  const integrative = course.integrative_question?.enabled === false ? null : compareQuestion(
     course.integrative_question || {},
     responseMap(responses, 1, "entrance"),
     responseMap(responses, lastNumber, "exit")
