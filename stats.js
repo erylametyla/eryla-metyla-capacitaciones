@@ -40,11 +40,12 @@ export function distribution(values) {
 export const EXPECTATION_FULFILLMENT = ["Totalmente", "Parcialmente", "No cumplió"];
 
 export const EXPECTATION_RULES = [
-  { key: "capacities", label: "Mejorar capacidades", groups: [["mejorar", "fortalecer", "desarrollar", "ampliar", "potenciar"], ["capacidad", "capacidades", "habilidad", "habilidades", "competencia", "competencias", "conocimiento", "conocimientos"]] },
-  { key: "objectives", label: "Lograr objetivos", groups: [["lograr", "alcanzar", "cumplir", "conseguir"], ["objetivo", "objetivos", "meta", "metas", "resultado", "resultados"]] },
-  { key: "tools", label: "Obtener herramientas", groups: [["obtener", "aplicar", "incorporar", "adquirir", "sumar"], ["herramienta", "herramientas", "recurso", "recursos", "estrategia", "estrategias"]] },
-  { key: "practice", label: "Mejorar la práctica", groups: [["mejorar", "aplicar", "renovar", "transformar"], ["practica", "practicas", "trabajo", "tarea", "ensenanza"]] },
-  { key: "other", label: "Otras expectativas", groups: [] }
+  { key: "knowledge", label: "Ampliar conocimientos y capacidades", terms: ["aprender", "conocimiento", "conocimientos", "comprender", "entender", "profundizar", "actualizar", "saber", "capacidad", "capacidades", "habilidad", "habilidades", "competencia", "competencias"] },
+  { key: "tools", label: "Obtener herramientas y recursos", terms: ["herramienta", "herramientas", "recurso", "recursos", "estrategia", "estrategias", "tecnica", "tecnicas", "metodo", "metodos", "material", "materiales", "instrumento", "instrumentos"] },
+  { key: "practice", label: "Aplicar y mejorar la práctica", terms: ["aplicar", "practica", "practicas", "implementar", "trabajo", "laboral", "aula", "tarea", "ensenanza", "resolver", "desempeno", "cotidiano"] },
+  { key: "growth", label: "Desarrollo personal o profesional", terms: ["crecer", "crecimiento", "desarrollo", "profesional", "personal", "mejorar", "fortalecer", "potenciar", "objetivo", "objetivos", "meta", "metas", "confianza"] },
+  { key: "exchange", label: "Intercambiar experiencias y colaborar", terms: ["compartir", "intercambiar", "intercambio", "experiencia", "experiencias", "colega", "colegas", "equipo", "red", "debatir", "escuchar", "colaborar"] },
+  { key: "other", label: "Otras expectativas", terms: [] }
 ];
 
 export function normalizeText(value) {
@@ -52,9 +53,13 @@ export function normalizeText(value) {
 }
 
 export function classifyExpectation(value) {
-  const text = ` ${normalizeText(value)} `;
-  const match = EXPECTATION_RULES.slice(0, -1).find(rule => rule.groups.every(group => group.some(word => text.includes(` ${word} `))));
-  return match || EXPECTATION_RULES.at(-1);
+  const words = new Set(normalizeText(value).split(" ").filter(Boolean));
+  const scores = EXPECTATION_RULES.slice(0, -1).map(rule => ({
+    rule,
+    score: rule.terms.reduce((total, term) => total + (words.has(term) ? 1 : 0), 0)
+  }));
+  scores.sort((a, b) => b.score - a.score);
+  return scores[0]?.score ? scores[0].rule : EXPECTATION_RULES.at(-1);
 }
 
 function responseMap(responses, encounterNumber, phase) {
@@ -115,7 +120,10 @@ export function buildReportData(course, data) {
       paired,
       completionRate: entrances.size ? paired / entrances.size * 100 : 0,
       questions: (encounter.questions || []).map(question => compareQuestion(question, entrances, exits)),
-      usefulness: describe([...exits.values()].map(row => row.course_usefulness))
+      usefulness: describe([...exits.values()].map(row => row.course_usefulness)),
+      unitExpectations: [...entrances.values()].map(row => row.unit_expectation_text).filter(Boolean),
+      satisfaction: describe([...exits.values()].map(row => row.unit_satisfaction)),
+      satisfactionDistribution: distribution([...exits.values()].map(row => row.unit_satisfaction))
     };
   });
   const lastNumber = course.encounters?.length || 1;
@@ -127,6 +135,7 @@ export function buildReportData(course, data) {
   const completedTickets = new Map(participants.map(item => [item.id, 0]));
   responses.forEach(row => completedTickets.set(row.participant_id, (completedTickets.get(row.participant_id) || 0) + 1));
   const expectedTickets = lastNumber * 2;
+  const finalExits = responses.filter(row => Number(row.encounter_number) === Number(lastNumber) && row.phase === "exit");
   return {
     course,
     participants,
@@ -137,6 +146,10 @@ export function buildReportData(course, data) {
     fullyCompleted: [...completedTickets.values()].filter(count => count === expectedTickets).length,
     institutions: distribution(participants.map(item => item.institution)),
     workAreas: distribution(participants.map(item => item.work_area)),
-    expectations: expectationAnalysis(responses)
+    expectations: expectationAnalysis(responses),
+    trainerFeedback: {
+      strengths: finalExits.map(row => row.instructor_strength).filter(Boolean),
+      improvements: finalExits.map(row => row.improvement_suggestion).filter(Boolean)
+    }
   };
 }

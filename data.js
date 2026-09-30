@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js?v=20260929-4";
+import { CONFIG } from "./config.js?v=20260930-1";
 
 function question(id, label) {
   return {
@@ -183,6 +183,10 @@ export class DataClient {
         encounter_number: course.active_encounter, phase: course.active_phase,
         answers: values.answers, expectation_text: values.expectation_text || null,
         expectation_fulfillment: values.expectation_fulfillment || null,
+        unit_expectation_text: values.unit_expectation_text || null,
+        unit_satisfaction: values.unit_satisfaction ? Number(values.unit_satisfaction) : null,
+        instructor_strength: values.instructor_strength || null,
+        improvement_suggestion: values.improvement_suggestion || null,
         course_usefulness: values.course_usefulness || null,
         group_number: groupNumber,
         responded_at: new Date().toISOString()
@@ -204,7 +208,11 @@ export class DataClient {
       p_work_area: values.work_area || null,
       p_expectation_text: values.expectation_text || null,
       p_expectation_fulfillment: values.expectation_fulfillment || null,
-      p_course_usefulness: values.course_usefulness ? Number(values.course_usefulness) : null
+      p_course_usefulness: values.course_usefulness ? Number(values.course_usefulness) : null,
+      p_unit_expectation_text: values.unit_expectation_text || null,
+      p_unit_satisfaction: values.unit_satisfaction ? Number(values.unit_satisfaction) : null,
+      p_instructor_strength: values.instructor_strength || null,
+      p_improvement_suggestion: values.improvement_suggestion || null
     };
     return this.request("/rest/v1/rpc/submit_active_ticket", { method: "POST", body: JSON.stringify(body) });
   }

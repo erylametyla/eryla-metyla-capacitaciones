@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Ticket de entrada de ERYLA METYLA.">
   <title>Ticket de entrada | ERYLA METYLA</title>
-  <link rel="stylesheet" href="styles.css?v=20260929-4">
+  <link rel="stylesheet" href="styles.css?v=20260930-1">
 </head>
 <body data-page="entrance">
   <main class="shell shell--form">
@@ -38,8 +38,13 @@
         </div>
         <div data-questions></div>
         <div class="field" data-expectation hidden>
-          <label for="expectation-text">¿Cuál es tu principal expectativa para este curso?</label>
+          <label for="expectation-text">¿Cuál es tu expectativa con este curso?</label>
           <textarea id="expectation-text" name="expectation_text" rows="3" minlength="5" maxlength="500"></textarea>
+          <small>Escribí una respuesta breve con tus propias palabras.</small>
+        </div>
+        <div class="field" data-unit-expectation hidden>
+          <label for="unit-expectation-text">¿Cuál es tu expectativa para esta unidad?</label>
+          <textarea id="unit-expectation-text" name="unit_expectation_text" rows="3" minlength="5" maxlength="500"></textarea>
         </div>
         <div class="form-message" data-form-message role="status" aria-live="polite"></div>
         <button class="button button--primary button--wide" type="submit">Enviar respuesta</button>
@@ -48,6 +53,6 @@
     </section>
     <section class="notice-card" data-unavailable-panel hidden></section>
   </main>
-  <script type="module" src="app.js?v=20260929-4"></script>
+  <script type="module" src="app.js?v=20260930-1"></script>
 </body>
 </html>

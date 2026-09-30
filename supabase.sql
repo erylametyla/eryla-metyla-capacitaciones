@@ -53,6 +53,10 @@ create table public.ticket_responses (
   answers jsonb not null check (jsonb_typeof(answers) = 'object'),
   expectation_text text check (expectation_text is null or char_length(trim(expectation_text)) between 5 and 500),
   expectation_fulfillment text check (expectation_fulfillment is null or expectation_fulfillment in ('Totalmente', 'Parcialmente', 'No cumplió')),
+  unit_expectation_text text check (unit_expectation_text is null or char_length(trim(unit_expectation_text)) between 5 and 500),
+  unit_satisfaction smallint check (unit_satisfaction is null or unit_satisfaction between 1 and 5),
+  instructor_strength text check (instructor_strength is null or char_length(trim(instructor_strength)) between 5 and 500),
+  improvement_suggestion text check (improvement_suggestion is null or char_length(trim(improvement_suggestion)) between 5 and 500),
   course_usefulness smallint check (course_usefulness is null or course_usefulness between 1 and 5),
   group_number smallint check (group_number is null or group_number between 1 and 100),
   responded_at timestamptz not null default now(),
@@ -116,7 +120,11 @@ create or replace function public.submit_active_ticket(
   p_institution text default null, p_work_area text default null,
   p_expectation_text text default null,
   p_expectation_fulfillment text default null,
-  p_course_usefulness smallint default null
+  p_course_usefulness smallint default null,
+  p_unit_expectation_text text default null,
+  p_unit_satisfaction smallint default null,
+  p_instructor_strength text default null,
+  p_improvement_suggestion text default null
 )
 returns jsonb language plpgsql security definer set search_path = public, private
 as $$
@@ -148,6 +156,7 @@ begin
        or nullif(trim(p_institution), '') is null or nullif(trim(p_work_area), '') is null then
       raise exception 'Faltan datos del participante';
     end if;
+    if nullif(trim(p_expectation_text), '') is null then raise exception 'Falta la expectativa inicial del curso'; end if;
     insert into public.participants (course_id, full_name, email, dni, institution, work_area)
     values (p_course_id, trim(p_full_name), lower(trim(p_email)), regexp_replace(p_dni, '[^0-9]', '', 'g'), trim(p_institution), trim(p_work_area))
     returning id into selected_participant;
@@ -155,6 +164,23 @@ begin
     select id into selected_participant from public.participants
     where course_id = p_course_id and email = lower(trim(p_email));
     if selected_participant is null then raise exception 'No encontramos tu registro del Ticket 1 con ese correo'; end if;
+  end if;
+
+  if selected_course.active_phase = 'entrance' and selected_course.active_encounter > 1
+     and nullif(trim(p_unit_expectation_text), '') is null then
+    raise exception 'Falta la expectativa de la unidad';
+  end if;
+  if selected_course.active_phase = 'exit' and p_unit_satisfaction is null then
+    raise exception 'Falta indicar la satisfacción con la unidad';
+  end if;
+  if selected_course.active_phase = 'exit' and p_course_usefulness is null then
+    raise exception 'Falta indicar la utilidad del encuentro';
+  end if;
+  if selected_course.active_encounter = final_encounter and selected_course.active_phase = 'exit' then
+    if p_expectation_fulfillment is null then raise exception 'Falta cerrar la expectativa inicial'; end if;
+    if nullif(trim(p_instructor_strength), '') is null or nullif(trim(p_improvement_suggestion), '') is null then
+      raise exception 'Faltan las respuestas de mejora del curso';
+    end if;
   end if;
 
   if selected_course.active_encounter = 1 and selected_course.active_phase = 'entrance' then
@@ -183,11 +209,18 @@ begin
 
   insert into public.ticket_responses (
     course_id, participant_id, encounter_number, phase, answers,
-    expectation_text, expectation_fulfillment, course_usefulness, group_number
+    expectation_text, expectation_fulfillment,
+    unit_expectation_text, unit_satisfaction,
+    instructor_strength, improvement_suggestion,
+    course_usefulness, group_number
   ) values (
     p_course_id, selected_participant, selected_course.active_encounter, selected_course.active_phase, p_answers,
     case when selected_course.active_encounter = 1 and selected_course.active_phase = 'entrance' then nullif(trim(p_expectation_text), '') end,
     case when selected_course.active_encounter = final_encounter and selected_course.active_phase = 'exit' then p_expectation_fulfillment end,
+    case when selected_course.active_encounter > 1 and selected_course.active_phase = 'entrance' then nullif(trim(p_unit_expectation_text), '') end,
+    case when selected_course.active_phase = 'exit' then p_unit_satisfaction end,
+    case when selected_course.active_encounter = final_encounter and selected_course.active_phase = 'exit' then nullif(trim(p_instructor_strength), '') end,
+    case when selected_course.active_encounter = final_encounter and selected_course.active_phase = 'exit' then nullif(trim(p_improvement_suggestion), '') end,
     case when selected_course.active_phase = 'exit' then p_course_usefulness end,
     assigned_group
   );
@@ -214,10 +247,10 @@ create policy "Admins manage responses" on public.ticket_responses for all to au
 
 revoke all on public.admin_profiles, public.courses, public.participants, public.ticket_responses from anon;
 revoke all on function public.get_active_ticket() from public;
-revoke all on function public.submit_active_ticket(uuid,text,jsonb,text,text,text,text,text,text,smallint) from public;
+revoke all on function public.submit_active_ticket(uuid,text,jsonb,text,text,text,text,text,text,smallint,text,smallint,text,text) from public;
 revoke all on schema private from public;
 grant usage on schema public to anon, authenticated;
 grant execute on function public.get_active_ticket() to anon, authenticated;
-grant execute on function public.submit_active_ticket(uuid,text,jsonb,text,text,text,text,text,text,smallint) to anon, authenticated;
+grant execute on function public.submit_active_ticket(uuid,text,jsonb,text,text,text,text,text,text,smallint,text,smallint,text,text) to anon, authenticated;
 grant select, insert, update, delete on public.courses, public.participants, public.ticket_responses to authenticated;
 grant select on public.admin_profiles to authenticated;

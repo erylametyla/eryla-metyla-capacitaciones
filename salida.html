@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Ticket de salida de ERYLA METYLA.">
   <title>Ticket de salida | ERYLA METYLA</title>
-  <link rel="stylesheet" href="styles.css?v=20260929-4">
+  <link rel="stylesheet" href="styles.css?v=20260930-1">
 </head>
 <body data-page="exit">
   <main class="shell shell--form">
@@ -26,6 +26,18 @@
           <input id="email" name="email" type="email" autocomplete="email" required placeholder="nombre@correo.com">
         </div>
         <div data-questions></div>
+        <fieldset class="field scale-field">
+          <legend>¿Cuál es tu nivel de satisfacción con esta unidad?</legend>
+          <div class="scale" role="radiogroup" aria-label="Satisfacción con la unidad">
+            <span class="scale__hint">Nada</span>
+            <label><input type="radio" name="unit_satisfaction" value="1" required><span>1</span></label>
+            <label><input type="radio" name="unit_satisfaction" value="2"><span>2</span></label>
+            <label><input type="radio" name="unit_satisfaction" value="3"><span>3</span></label>
+            <label><input type="radio" name="unit_satisfaction" value="4"><span>4</span></label>
+            <label><input type="radio" name="unit_satisfaction" value="5"><span>5</span></label>
+            <span class="scale__hint">Total</span>
+          </div>
+        </fieldset>
         <section data-final-fields hidden>
           <fieldset class="field">
             <legend>¿En qué medida el curso cumplió tu expectativa inicial?</legend>
@@ -35,6 +47,15 @@
               <label><input type="radio" name="expectation_fulfillment" value="No cumplió"><span>No cumplió</span></label>
             </div>
           </fieldset>
+          <div class="field">
+            <label for="instructor-strength">¿Qué hizo bien el/la capacitador/a y debería mantener?</label>
+            <textarea id="instructor-strength" name="instructor_strength" rows="3" minlength="5" maxlength="500"></textarea>
+          </div>
+          <div class="field">
+            <label for="improvement-suggestion">¿Qué podría mejorar el/la capacitador/a o el curso para próximas ediciones?</label>
+            <textarea id="improvement-suggestion" name="improvement_suggestion" rows="3" minlength="5" maxlength="500"></textarea>
+            <small>Tu respuesta nos ayuda a mejorar. Podés ser claro/a y constructivo/a.</small>
+          </div>
         </section>
         <fieldset class="field scale-field">
           <legend>¿Qué tan útil te resultó este encuentro?</legend>
@@ -55,6 +76,6 @@
     </section>
     <section class="notice-card" data-unavailable-panel hidden></section>
   </main>
-  <script type="module" src="app.js?v=20260929-4"></script>
+  <script type="module" src="app.js?v=20260930-1"></script>
 </body>
 </html>

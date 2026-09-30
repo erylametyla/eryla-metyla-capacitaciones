@@ -1,4 +1,4 @@
-import { classifyExpectation } from "./stats.js?v=20260929-4";
+import { classifyExpectation } from "./stats.js?v=20260930-1";
 
 function dateTime(value) {
   if (!value) return "";
@@ -14,13 +14,15 @@ export function buildCsvData(course, data) {
     ["entrada", "salida"].forEach(phase => {
       dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_fecha`);
       dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_grupo`);
+      dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_${phase === "entrada" ? "expectativa_unidad" : "satisfaccion_unidad"}`);
       encounter.questions.forEach((_, index) => dynamicHeaders.push(`encuentro_${encounter.number}_${phase}_pregunta_${index + 1}`));
     });
   });
   dynamicHeaders.push("pregunta_integradora_entrada_1", `pregunta_integradora_salida_${course.encounters.length}`);
   const headers = [
     "nombre_y_apellido", "email", "dni", "institucion", "area_de_trabajo", "fecha_registro",
-    "expectativa_inicial", "categoria_expectativa", "cumplimiento_expectativa", ...dynamicHeaders
+    "expectativa_inicial", "categoria_expectativa", "cumplimiento_expectativa",
+    "fortalezas_capacitador", "mejoras_capacitador_o_curso", ...dynamicHeaders
   ];
   const rows = (data.participants || []).map(participant => {
     const cells = [];
@@ -33,6 +35,7 @@ export function buildCsvData(course, data) {
         if (encounter.number === course.encounters.length && phase === "exit") finalExit = response;
         cells.push(dateTime(response?.responded_at));
         cells.push(response?.group_number || "");
+        cells.push(phase === "entrance" ? response?.unit_expectation_text || "" : response?.unit_satisfaction || "");
         encounter.questions.forEach(question => cells.push(response?.answers?.[question.id] || ""));
       });
     });
@@ -43,7 +46,8 @@ export function buildCsvData(course, data) {
       participant.work_area, dateTime(participant.registered_at),
       firstEntrance?.expectation_text || "",
       firstEntrance?.expectation_text ? classifyExpectation(firstEntrance.expectation_text).label : "",
-      finalExit?.expectation_fulfillment || "", ...cells
+      finalExit?.expectation_fulfillment || "",
+      finalExit?.instructor_strength || "", finalExit?.improvement_suggestion || "", ...cells
     ];
   });
   return { headers, rows };

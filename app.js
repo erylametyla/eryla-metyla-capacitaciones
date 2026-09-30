@@ -1,6 +1,6 @@
-import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260929-4";
-import { buildReportData } from "./stats.js?v=20260929-4";
-import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260929-4";
+import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-1";
+import { buildReportData } from "./stats.js?v=20260930-1";
+import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260930-1";
 
 const client = new DataClient();
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -81,6 +81,7 @@ async function initTicket(phase) {
     const encounter = activeEncounter(course);
     if (!encounter) return unavailable("La configuración del encuentro no es válida.");
     const firstEntrance = phase === "entrance" && Number(course.active_encounter) === 1;
+    const unitEntrance = phase === "entrance" && Number(course.active_encounter) > 1;
     const finalExit = phase === "exit" && Number(course.active_encounter) === Number(course.encounter_count);
     const questions = [...encounter.questions];
     if (firstEntrance || finalExit) questions.push(course.integrative_question);
@@ -96,11 +97,13 @@ async function initTicket(phase) {
       $("[name=email_repeat]").required = !firstEntrance;
       $("[data-expectation]").hidden = !firstEntrance;
       $("[name=expectation_text]").required = firstEntrance;
+      $("[data-unit-expectation]").hidden = !unitEntrance;
+      $("[name=unit_expectation_text]").required = unitEntrance;
     }
     const finalFields = $("[data-final-fields]");
     if (finalFields) {
       finalFields.hidden = !finalExit;
-      $$('input', finalFields).forEach(input => { input.required = finalExit; });
+      $$('input, textarea', finalFields).forEach(input => { input.required = finalExit; });
     }
     $("[data-form-panel]").hidden = false;
 
@@ -122,6 +125,10 @@ async function initTicket(phase) {
           institution: values.get("institution"), work_area: values.get("work_area"),
           expectation_text: values.get("expectation_text"),
           expectation_fulfillment: values.get("expectation_fulfillment"),
+          unit_expectation_text: values.get("unit_expectation_text"),
+          unit_satisfaction: values.get("unit_satisfaction"),
+          instructor_strength: values.get("instructor_strength"),
+          improvement_suggestion: values.get("improvement_suggestion"),
           course_usefulness: values.get("course_usefulness"), answers
         });
         form.reset();
@@ -275,9 +282,22 @@ function barList(rows) {
   return `<div class="bar-list">${rows.map(row => `<div class="bar-row"><span>${escapeHtml(row.label)}</span><div class="bar-track"><span style="width:${Math.min(row.share, 100)}%"></span></div><strong>${row.count}</strong></div>`).join("")}</div>`;
 }
 
-function reportHtml(report) {
+function baseReportHtml(report) {
   const expectationRows = report.expectations.filter(row => row.count).map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${row.count}</td><td>${row.counts.Totalmente}</td><td>${row.counts.Parcialmente}</td><td>${row.counts["No cumplió"]}</td></tr>`).join("");
   return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Informe de capacitación</span><h1>${escapeHtml(report.course.name)}</h1><div class="report-meta">Profesor/a: ${escapeHtml(report.course.instructor)} · ${escapeHtml(report.course.modality)} · ${escapeHtml(report.course.hours)} horas<br>Período: ${dateOnly(report.course.start_date)} — ${dateOnly(report.course.end_date)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${report.participants.length}</strong><span>Participantes</span></div><div class="report-card"><strong>${report.responses.length}</strong><span>Tickets respondidos</span></div><div class="report-card"><strong>${report.fullyCompleted}</strong><span>Recorridos completos</span></div><div class="report-card"><strong>${report.course.encounters.length}</strong><span>Encuentros</span></div></div><h2>Evolución por encuentro</h2>${report.encounters.map(encounter => `<section class="report-section"><h3>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h3><p class="report-meta">Entradas: ${encounter.entranceCount} · Salidas: ${encounter.exitCount} · Vinculadas: ${encounter.paired} · Seguimiento: ${percent(encounter.completionRate)}</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table></section>`).join("")}<h2>Pregunta integradora: inicio vs. cierre</h2><p class="report-note">Compara la Entrada del Ticket 1 con la Salida del Ticket ${report.course.encounters.length}, únicamente en participantes vinculados.</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada 1</th><th>Salida ${report.course.encounters.length}</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${reportTableQuestion(report.integrative)}</tbody></table><h2>Perfil institucional</h2><h3>Instituciones</h3>${barList(report.institutions)}<h3>Áreas de trabajo</h3>${barList(report.workAreas)}<h2>Expectativas iniciales y cumplimiento final</h2>${expectationRows ? `<table class="report-table"><thead><tr><th>Expectativa</th><th>Inicial</th><th>Totalmente</th><th>Parcialmente</th><th>No cumplió</th></tr></thead><tbody>${expectationRows}</tbody></table>` : `<p class="muted">Sin respuestas suficientes.</p>`}</article>`;
+}
+
+function responseList(rows) {
+  if (!rows.length) return `<p class="muted">Sin respuestas todavía.</p>`;
+  return `<ul class="response-list">${rows.map(row => `<li>${escapeHtml(row)}</li>`).join("")}</ul>`;
+}
+
+function reportHtml(report) {
+  const unitSections = report.encounters.map(encounter => `<section class="report-section"><h3>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h3><p class="report-meta">Satisfacción media: ${encounter.satisfaction.mean === null ? "—" : `${encounter.satisfaction.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`} · Respuestas: ${encounter.satisfaction.n}</p>${barList(encounter.satisfactionDistribution)}${encounter.number > 1 ? `<h4>Expectativas escritas de la unidad</h4>${responseList(encounter.unitExpectations)}` : `<p class="muted">La Entrada 1 utiliza la expectativa general del curso.</p>`}</section>`).join("");
+  const additional = `<p class="report-note">Clasificación automática en seis categorías según palabras clave. Las respuestas originales se conservan en la descarga CSV.</p><h2>Expectativas y satisfacción por unidad</h2>${unitSections}<h2>Mejora del capacitador y del curso</h2><h3>Aspectos que debería mantener</h3>${responseList(report.trainerFeedback.strengths)}<h3>Oportunidades de mejora</h3>${responseList(report.trainerFeedback.improvements)}`;
+  return baseReportHtml(report)
+    .replace("Expectativas iniciales y cumplimiento final", "Expectativa general y cumplimiento final")
+    .replace("</article>", `${additional}</article>`);
 }
 
 const REPORT_CSS = `:root{font-family:Arial,sans-serif;color:#20252b}body{margin:0;background:#f5f6f7}.report-paper{max-width:900px;margin:24px auto;padding:38px;background:#fff}.eyebrow{color:#fe5e01;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-size:32px;margin:5px 0 8px}h2{font-size:19px;margin:30px 0 12px;padding-top:18px;border-top:1px solid #ded9e8}h3{font-size:15px}.report-meta,.muted{color:#626973;font-size:12px;line-height:1.5}.report-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:22px 0}.report-card{padding:13px;border:1px solid #ded9e8;border-radius:9px}.report-card strong{display:block;font-size:23px}.report-card span{color:#626973;font-size:11px}.report-table{width:100%;border-collapse:collapse;font-size:12px}.report-table th,.report-table td{padding:8px 6px;border-bottom:1px solid #ded9e8;text-align:right}.report-table th:first-child,.report-table td:first-child{text-align:left}.report-note{padding:11px 13px;border-left:3px solid #6a35d6;background:#f0eafb;font-size:12px}.bar-list{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:180px 1fr 50px;align-items:center;gap:9px;font-size:12px}.bar-track{height:8px;overflow:hidden;border-radius:99px;background:#e9e5ef}.bar-track span{display:block;height:100%;background:#6a35d6}@media(max-width:650px){.report-paper{margin:0;padding:20px 14px}.report-cards{grid-template-columns:repeat(2,1fr)}.report-table{font-size:10px}.bar-row{grid-template-columns:110px 1fr 35px}}@media print{body{background:#fff}.report-paper{margin:0;padding:0}}`;

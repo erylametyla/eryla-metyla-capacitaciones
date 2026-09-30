@@ -4,8 +4,10 @@ import { buildCsvData } from "./exports.js";
 
 assert.deepEqual(describe([1, 2, 3, 4, 5]), { n: 5, mean: 3, median: 3, min: 1, max: 5, sd: Math.sqrt(2), range: 4 });
 assert.equal(distribution(["A", "A", "B"])[0].count, 2);
-assert.equal(classifyExpectation("Quiero mejorar mis capacidades").key, "capacities");
+assert.equal(classifyExpectation("Quiero mejorar mis capacidades").key, "knowledge");
 assert.equal(classifyExpectation("Necesito obtener nuevas herramientas").key, "tools");
+assert.equal(classifyExpectation("Quiero compartir experiencias con colegas").key, "exchange");
+assert.equal(classifyExpectation("Busco aplicar lo aprendido en mi trabajo").key, "practice");
 
 const q1 = { id: "e1q1", question: "Pregunta unidad", options: ["A", "B"], correct_answer: "A" };
 const integrative = { id: "integrative", question: "Pregunta integradora", options: ["A", "B"], correct_answer: "A" };
@@ -24,9 +26,9 @@ const participants = [
 ];
 const responses = [
   { participant_id: "p1", encounter_number: 1, phase: "entrance", answers: { e1q1: "B", integrative: "B" }, expectation_text: "Obtener nuevas herramientas", responded_at: "2026-01-01T10:05:00Z" },
-  { participant_id: "p1", encounter_number: 1, phase: "exit", answers: { e1q1: "A" }, course_usefulness: 5, responded_at: "2026-01-01T12:00:00Z" },
-  { participant_id: "p1", encounter_number: 2, phase: "entrance", answers: { e2q1: "B" }, responded_at: "2026-01-02T10:00:00Z" },
-  { participant_id: "p1", encounter_number: 2, phase: "exit", answers: { e2q1: "A", integrative: "A" }, expectation_fulfillment: "Totalmente", responded_at: "2026-01-02T12:00:00Z" },
+  { participant_id: "p1", encounter_number: 1, phase: "exit", answers: { e1q1: "A" }, unit_satisfaction: 4, course_usefulness: 5, responded_at: "2026-01-01T12:00:00Z" },
+  { participant_id: "p1", encounter_number: 2, phase: "entrance", answers: { e2q1: "B" }, unit_expectation_text: "Aplicar estrategias en el aula", responded_at: "2026-01-02T10:00:00Z" },
+  { participant_id: "p1", encounter_number: 2, phase: "exit", answers: { e2q1: "A", integrative: "A" }, expectation_fulfillment: "Totalmente", unit_satisfaction: 5, instructor_strength: "Explicaciones muy claras", improvement_suggestion: "Agregar más casos prácticos", responded_at: "2026-01-02T12:00:00Z" },
   { participant_id: "p2", encounter_number: 1, phase: "entrance", answers: { e1q1: "A", integrative: "A" }, expectation_text: "Compartir experiencias", responded_at: "2026-01-01T10:06:00Z" }
 ];
 
@@ -39,12 +41,17 @@ assert.equal(report.integrative.exit.share, 100);
 assert.equal(report.integrative.improved, 1);
 assert.equal(report.fullyCompleted, 1);
 assert.equal(report.expectations.find(row => row.key === "tools").counts.Totalmente, 1);
+assert.equal(report.encounters[1].satisfaction.mean, 5);
+assert.equal(report.encounters[1].unitExpectations[0], "Aplicar estrategias en el aula");
+assert.equal(report.trainerFeedback.improvements[0], "Agregar más casos prácticos");
 
 const csv = buildCsvData(course, { participants, responses });
 assert.equal(csv.rows.length, 2);
 assert.ok(csv.headers.includes("nombre_y_apellido"));
 assert.ok(csv.headers.includes("pregunta_integradora_entrada_1"));
 assert.ok(csv.headers.includes("pregunta_integradora_salida_2"));
+assert.ok(csv.headers.includes("fortalezas_capacitador"));
+assert.ok(csv.headers.includes("encuentro_2_entrada_expectativa_unidad"));
 assert.ok(csv.rows.every(row => row.length === csv.headers.length));
 
 console.log("Pruebas estadísticas correctas");

@@ -13,6 +13,9 @@ Aplicación responsive para cursos organizados en encuentros. Cada encuentro tie
 - informe por encuentro con respuestas correctas, cambio y participantes que mejoraron, se mantuvieron o disminuyeron;
 - cantidad esperada de participantes y sorteo equilibrado de grupos configurable para la Entrada y la Salida de cada encuentro;
 - aviso individual del grupo al finalizar el ticket y número de grupo incluido en la exportación CSV;
+- expectativa general escrita con clasificación automática en seis categorías;
+- expectativa de cada unidad desde la Entrada 2 y satisfacción de la unidad en todas las salidas;
+- dos preguntas abiertas finales para identificar fortalezas del capacitador y oportunidades de mejora;
 - evolución integradora del inicio al cierre;
 - distribución por institución y área de trabajo;
 - CSV individual completo con fechas y respuestas;
@@ -37,6 +40,7 @@ Aplicación responsive para cursos organizados en encuentros. Cada encuentro tie
 La clave `anon` es pública por diseño. Nunca debe copiarse la clave `service_role` al sitio. La protección real de participantes, DNI y respuestas está en las políticas RLS de `supabase.sql`.
 
 Para actualizar una instalación anterior a la función de grupos, ejecutar una vez `supabase-grouping-migration.sql` en el editor SQL de Supabase.
+Para agregar expectativas por unidad y devoluciones del capacitador a una instalación existente, ejecutar una vez `supabase-feedback-migration.sql`.
 
 ## Privacidad
 
