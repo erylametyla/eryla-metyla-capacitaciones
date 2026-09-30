@@ -1,4 +1,4 @@
-import { classifyExpectation } from "./stats.js?v=20260930-3";
+import { classifyExpectation } from "./stats.js?v=20260930-4";
 
 function dateTime(value) {
   if (!value) return "";
@@ -45,7 +45,7 @@ export function buildCsvData(course, data) {
       participant.full_name, participant.email, participant.dni, participant.institution,
       participant.work_area, dateTime(participant.registered_at),
       firstEntrance?.expectation_text || "",
-      firstEntrance?.expectation_text ? classifyExpectation(firstEntrance.expectation_text).label : "",
+      classifyExpectation(firstEntrance?.expectation_text).label,
       finalExit?.expectation_fulfillment || "",
       finalExit?.instructor_strength || "", finalExit?.improvement_suggestion || "", ...cells
     ];

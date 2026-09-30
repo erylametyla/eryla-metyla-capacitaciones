@@ -4,10 +4,13 @@ import { buildCsvData } from "./exports.js";
 
 assert.deepEqual(describe([1, 2, 3, 4, 5]), { n: 5, mean: 3, median: 3, min: 1, max: 5, sd: Math.sqrt(2), range: 4 });
 assert.equal(distribution(["A", "A", "B"])[0].count, 2);
-assert.equal(classifyExpectation("Quiero mejorar mis capacidades").key, "knowledge");
+assert.equal(classifyExpectation("Quiero adquirir nuevas habilidades").key, "skills");
 assert.equal(classifyExpectation("Necesito obtener nuevas herramientas").key, "tools");
-assert.equal(classifyExpectation("Quiero compartir experiencias con colegas").key, "exchange");
-assert.equal(classifyExpectation("Busco aplicar lo aprendido en mi trabajo").key, "practice");
+assert.equal(classifyExpectation("Quiero practicar y aplicar lo aprendido").key, "practice");
+assert.equal(classifyExpectation("Necesito refrescar y actualizar conocimientos anteriores").key, "refresh");
+assert.equal(classifyExpectation("No tengo expectativas").key, "none");
+assert.equal(classifyExpectation("").key, "none");
+assert.equal(classifyExpectation("Quiero compartir experiencias con colegas").key, "other");
 
 const q1 = { id: "e1q1", question: "Pregunta unidad", options: ["A", "B"], correct_answer: "A" };
 const integrative = { id: "integrative", question: "Pregunta integradora", options: ["A", "B"], correct_answer: "A" };
@@ -41,6 +44,15 @@ assert.equal(report.integrative.exit.share, 100);
 assert.equal(report.integrative.improved, 1);
 assert.equal(report.fullyCompleted, 1);
 assert.equal(report.expectations.find(row => row.key === "tools").counts.Totalmente, 1);
+assert.equal(report.expectations.find(row => row.key === "other").count, 1);
+assert.equal(report.encounters[0].learning.entrance.mean, 0);
+assert.equal(report.encounters[0].learning.exit.mean, 100);
+assert.equal(report.encounters[0].learning.change.mean, 100);
+assert.equal(report.encounters[0].learning.forecast.value, 100);
+assert.equal(report.encounters[1].unitExpectationProfile.find(row => row.key === "practice").count, 1);
+assert.equal(report.overallLearning.entrance.mean, 0);
+assert.equal(report.overallLearning.exit.mean, 100);
+assert.equal(report.overallLearning.change.mean, 100);
 assert.equal(report.encounters[1].satisfaction.mean, 5);
 assert.equal(report.encounters[1].unitExpectations[0], "Aplicar estrategias en el aula");
 assert.equal(report.trainerFeedback.improvements[0], "Agregar más casos prácticos");
@@ -54,6 +66,8 @@ const hiddenReport = buildReportData({
   integrative_question: { ...integrative, enabled: false }
 }, { participants, responses });
 assert.equal(hiddenReport.encounters[0].questions.length, 0);
+assert.equal(hiddenReport.encounters[0].learning.change.n, 0);
+assert.equal(hiddenReport.encounters[0].learning.forecast.value, null);
 assert.equal(hiddenReport.integrative, null);
 
 const csv = buildCsvData(course, { participants, responses });

@@ -83,12 +83,12 @@ begin
     end if;
 
     initial_expectation := case mod(participant_number - 1, 6)
-      when 0 then 'Aprender y ampliar conocimientos para fortalecer mis capacidades como formador.'
+      when 0 then 'Adquirir nuevas habilidades y capacidades para comunicar y enseñar.'
       when 1 then 'Obtener herramientas, estrategias y métodos prácticos para planificar cursos.'
-      when 2 then 'Aplicar lo aprendido y mejorar mi práctica de enseñanza en el trabajo.'
-      when 3 then 'Mejorar mi desarrollo profesional y lograr objetivos con más confianza.'
-      when 4 then 'Compartir experiencias y colaborar con colegas de otras áreas.'
-      else 'Conocer nuevas perspectivas sobre la temática del curso.'
+      when 2 then 'Practicar y aplicar habilidades ya obtenidas en situaciones de trabajo.'
+      when 3 then 'Refrescar y actualizar conocimientos anteriores sobre planificación.'
+      when 4 then 'No tengo expectativas particulares para este curso.'
+      else 'Compartir experiencias y conocer otras perspectivas del grupo.'
     end;
 
     for encounter in
@@ -234,6 +234,24 @@ begin
       end loop;
     end loop;
   end loop;
+
+  -- Mantiene actualizados los perfiles de la muestra aunque esta ya existiera.
+  update public.ticket_responses r
+  set expectation_text = case mod(right(p.dni, 4)::int - 1, 6)
+    when 0 then 'Adquirir nuevas habilidades y capacidades para comunicar y enseñar.'
+    when 1 then 'Obtener herramientas, estrategias y métodos prácticos para planificar cursos.'
+    when 2 then 'Practicar y aplicar habilidades ya obtenidas en situaciones de trabajo.'
+    when 3 then 'Refrescar y actualizar conocimientos anteriores sobre planificación.'
+    when 4 then 'No tengo expectativas particulares para este curso.'
+    else 'Compartir experiencias y conocer otras perspectivas del grupo.'
+  end
+  from public.participants p
+  where r.participant_id = p.id
+    and p.course_id = selected_course.id
+    and p.dni between '99100001' and '99100050'
+    and p.full_name like 'Participante de prueba %'
+    and r.encounter_number = 1
+    and r.phase = 'entrance';
 
   total_expected_responses := 50 * jsonb_array_length(selected_course.encounters) * 2;
 

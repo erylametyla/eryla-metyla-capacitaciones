@@ -1,6 +1,6 @@
 import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-5";
-import { buildReportData } from "./stats.js?v=20260930-3";
-import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260930-3";
+import { buildReportData } from "./stats.js?v=20260930-4";
+import { buildCsvData, downloadCsv } from "./exports.js?v=20260930-4";
 
 const client = new DataClient();
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -306,23 +306,58 @@ function barList(rows) {
   return `<div class="bar-list">${rows.map(row => `<div class="bar-row"><span>${escapeHtml(row.label)}</span><div class="bar-track"><span style="width:${Math.min(row.share, 100)}%"></span></div><strong>${row.count}</strong></div>`).join("")}</div>`;
 }
 
-function baseReportHtml(report) {
-  const expectationRows = report.expectations.filter(row => row.count).map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${row.count}</td><td>${row.counts.Totalmente}</td><td>${row.counts.Parcialmente}</td><td>${row.counts["No cumplió"]}</td></tr>`).join("");
-  const integrativeSection = report.integrative ? `<h2>Pregunta integradora: inicio vs. cierre</h2><p class="report-note">Compara la Entrada del Ticket 1 con la Salida del Ticket ${report.course.encounters.length}, únicamente en participantes vinculados.</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada 1</th><th>Salida ${report.course.encounters.length}</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${reportTableQuestion(report.integrative)}</tbody></table>` : "";
-  const encounterSections = report.encounters.map(encounter => `<section class="report-section"><h3>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h3><p class="report-meta">Entradas: ${encounter.entranceCount} · Salidas: ${encounter.exitCount} · Vinculadas: ${encounter.paired} · Seguimiento: ${percent(encounter.completionRate)}</p>${encounter.questions.length ? `<table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table>` : `<p class="muted">No hay preguntas técnicas activas en este encuentro.</p>`}</section>`).join("");
-  return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Informe de capacitación</span><h1>${escapeHtml(report.course.name)}</h1><div class="report-meta">Profesor/a: ${escapeHtml(report.course.instructor)} · ${escapeHtml(report.course.modality)} · ${escapeHtml(report.course.hours)} horas<br>Período: ${dateOnly(report.course.start_date)} — ${dateOnly(report.course.end_date)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${report.participants.length}</strong><span>Participantes</span></div><div class="report-card"><strong>${report.responses.length}</strong><span>Tickets respondidos</span></div><div class="report-card"><strong>${report.fullyCompleted}</strong><span>Recorridos completos</span></div><div class="report-card"><strong>${report.course.encounters.length}</strong><span>Encuentros</span></div></div><h2>Evolución por encuentro</h2>${encounterSections}${integrativeSection}<h2>Perfil institucional</h2><h3>Instituciones</h3>${barList(report.institutions)}<h3>Áreas de trabajo</h3>${barList(report.workAreas)}<h2>Expectativas iniciales y cumplimiento final</h2>${expectationRows ? `<table class="report-table"><thead><tr><th>Expectativa</th><th>Inicial</th><th>Totalmente</th><th>Parcialmente</th><th>No cumplió</th></tr></thead><tbody>${expectationRows}</tbody></table>` : `<p class="muted">Sin respuestas suficientes.</p>`}</article>`;
+function countedResponseList(rows) {
+  return barList(rows.length ? [...new Map(rows.map(value => [value, 0])).keys()].map(label => {
+    const count = rows.filter(value => value === label).length;
+    return { label, count, share: count / rows.length * 100 };
+  }).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "es")) : []);
 }
 
-function responseList(rows) {
-  if (!rows.length) return `<p class="muted">Sin respuestas todavía.</p>`;
-  return `<ul class="response-list">${rows.map(row => `<li>${escapeHtml(row)}</li>`).join("")}</ul>`;
+function scoreText(value, signed = false) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  const number = Number(value);
+  const prefix = signed && number > 0 ? "+" : "";
+  return `${prefix}${number.toLocaleString("es-AR", { maximumFractionDigits: 1 })} %`;
+}
+
+function learningAnalysisHtml(learning) {
+  if (!learning || learning.change.n === 0) return `<p class="muted">Todavía no hay pares completos de Entrada y Salida para calcular la mejora.</p>`;
+  const forecast = learning.forecast.value === null ? "—" : `${scoreText(learning.forecast.value)} (${scoreText(learning.forecast.lower)} a ${scoreText(learning.forecast.upper)})`;
+  const highlights = learning.bestQuestion && learning.weakestQuestion
+    ? `<p class="report-meta"><strong>Mayor avance:</strong> ${escapeHtml(learning.bestQuestion.question)} (${scoreText(learning.bestQuestion.change, true)}).<br><strong>Resultado que requiere más refuerzo:</strong> ${escapeHtml(learning.weakestQuestion.question)} (${scoreText(learning.weakestQuestion.exit.share)} de respuestas correctas en la salida).</p>`
+    : "";
+  return `<div class="report-cards report-cards--learning"><div class="report-card"><strong>${scoreText(learning.entrance.mean)}</strong><span>Media de entrada</span></div><div class="report-card"><strong>${scoreText(learning.exit.mean)}</strong><span>Media de salida</span></div><div class="report-card"><strong>${scoreText(learning.change.mean, true)}</strong><span>Mejora media</span></div><div class="report-card"><strong>${scoreText(learning.forecast.value)}</strong><span>Proyección orientativa</span></div></div><p class="report-meta">Casos comparables: ${learning.change.n} · Mediana de mejora: ${scoreText(learning.change.median, true)} · Mejor resultado final: ${scoreText(learning.exit.max)} · Menor resultado final: ${scoreText(learning.exit.min)} · Mejor variación individual: ${scoreText(learning.change.max, true)} · Peor variación individual: ${scoreText(learning.change.min, true)} · Desvío: ${scoreText(learning.change.sd)}</p>${highlights}<p class="report-note"><strong>Predicción del aprendizaje:</strong> ${forecast}. Confianza ${learning.forecast.confidence}. Se proyecta medio paso adicional de la mejora observada; es una tendencia orientativa y debe confirmarse con una nueva medición.</p>`;
+}
+
+function overallLearningHtml(report) {
+  const learning = report.overallLearning;
+  const unitHighlights = learning.bestUnit && learning.weakestUnit
+    ? `<p class="report-meta"><strong>Unidad con mayor mejora media:</strong> Unidad ${learning.bestUnit.number} · ${escapeHtml(learning.bestUnit.title)} (${scoreText(learning.bestUnit.learning.change.mean, true)}).<br><strong>Unidad con menor resultado final:</strong> Unidad ${learning.weakestUnit.number} · ${escapeHtml(learning.weakestUnit.title)} (${scoreText(learning.weakestUnit.learning.exit.mean)}).</p>`
+    : "";
+  return `<section class="report-overall"><h2>Mejora general del grupo</h2>${learningAnalysisHtml(learning)}${unitHighlights}</section>`;
+}
+
+function reportUnitSection(encounter, report) {
+  const profile = encounter.number === 1 ? report.expectations : encounter.unitExpectationProfile;
+  const profileTitle = encounter.number === 1 ? "Perfil de expectativas del curso" : "Perfil de expectativas de la unidad";
+  const questions = encounter.questions.length
+    ? `<table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table>`
+    : `<p class="muted">No hay preguntas técnicas activas en esta unidad.</p>`;
+  const satisfaction = encounter.satisfaction.mean === null ? "—" : `${encounter.satisfaction.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`;
+  const usefulness = encounter.usefulness.mean === null ? "—" : `${encounter.usefulness.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`;
+  return `<section class="report-section report-page report-unit"><span class="section-kicker">Unidad ${encounter.number}</span><h2>Unidad ${encounter.number} · ${escapeHtml(encounter.title)}</h2><p class="report-meta">Entradas: ${encounter.entranceCount} · Salidas: ${encounter.exitCount} · Vinculadas: ${encounter.paired} · Seguimiento: ${percent(encounter.completionRate)}</p><h3>Análisis estadístico de mejora</h3>${learningAnalysisHtml(encounter.learning)}<h3>Resultado por pregunta</h3>${questions}<div class="report-two-columns"><section><h3>${profileTitle}</h3>${barList(profile)}</section><section><h3>Satisfacción y utilidad</h3><p class="report-meta">Satisfacción media: ${satisfaction}<br>Utilidad media: ${usefulness}</p>${barList(encounter.satisfactionDistribution)}</section></div></section>`;
+}
+
+function baseReportHtml(report) {
+  const expectationRows = report.expectations.filter(row => row.count).map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${row.count}</td><td>${row.counts.Totalmente}</td><td>${row.counts.Parcialmente}</td><td>${row.counts["No cumplió"]}</td></tr>`).join("");
+  const integrativeSection = report.integrative ? `<section class="report-section report-page report-integrative"><span class="section-kicker">Evaluación global</span><h2>Pregunta integradora: inicio vs. cierre</h2><p class="report-note">Esta sección es independiente de las unidades. Compara la Entrada del Ticket 1 con la Salida del Ticket ${report.course.encounters.length}, únicamente en participantes vinculados.</p><table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada 1</th><th>Salida ${report.course.encounters.length}</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${reportTableQuestion(report.integrative)}</tbody></table></section>` : "";
+  const encounterSections = report.encounters.map(encounter => reportUnitSection(encounter, report)).join("");
+  return `<article class="report-paper"><header class="report-cover"><span class="eyebrow">ERYLA METYLA · Informe general de capacitación</span><h1>${escapeHtml(report.course.name)}</h1><div class="report-meta">Profesor/a: ${escapeHtml(report.course.instructor)} · ${escapeHtml(report.course.modality)} · ${escapeHtml(report.course.hours)} horas<br>Período: ${dateOnly(report.course.start_date)} — ${dateOnly(report.course.end_date)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${report.participants.length}</strong><span>Participantes</span></div><div class="report-card"><strong>${report.responses.length}</strong><span>Tickets respondidos</span></div><div class="report-card"><strong>${report.fullyCompleted}</strong><span>Recorridos completos</span></div><div class="report-card"><strong>${report.course.encounters.length}</strong><span>Unidades</span></div></div><p class="report-note">El informe presenta cada unidad por separado y reserva una sección independiente para la pregunta integradora.</p>${overallLearningHtml(report)}</header>${encounterSections}${integrativeSection}<section class="report-section report-page"><h2>Perfil institucional</h2><h3>Instituciones</h3>${barList(report.institutions)}<h3>Áreas de trabajo</h3>${barList(report.workAreas)}<h2>Perfil de expectativas y cumplimiento final</h2><p class="report-note">Clasificación automática en seis perfiles según acciones y palabras clave. Las respuestas originales se conservan en la descarga CSV.</p>${expectationRows ? `<table class="report-table"><thead><tr><th>Perfil de respuesta</th><th>Inicial</th><th>Totalmente</th><th>Parcialmente</th><th>No cumplió</th></tr></thead><tbody>${expectationRows}</tbody></table>` : `<p class="muted">Sin respuestas suficientes.</p>`}</section></article>`;
 }
 
 function reportHtml(report) {
-  const unitSections = report.encounters.map(encounter => `<section class="report-section"><h3>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h3><p class="report-meta">Satisfacción media: ${encounter.satisfaction.mean === null ? "—" : `${encounter.satisfaction.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`} · Respuestas: ${encounter.satisfaction.n}</p>${barList(encounter.satisfactionDistribution)}${encounter.number > 1 ? `<h4>Expectativas escritas de la unidad</h4>${responseList(encounter.unitExpectations)}` : `<p class="muted">La Entrada 1 utiliza la expectativa general del curso.</p>`}</section>`).join("");
-  const additional = `<p class="report-note">Clasificación automática en seis categorías según palabras clave. Las respuestas originales se conservan en la descarga CSV.</p><h2>Expectativas y satisfacción por unidad</h2>${unitSections}<h2>Mejora del capacitador y del curso</h2><h3>Aspectos que debería mantener</h3>${responseList(report.trainerFeedback.strengths)}<h3>Oportunidades de mejora</h3>${responseList(report.trainerFeedback.improvements)}`;
+  const additional = `<section class="report-section report-page"><h2>Mejora del capacitador y del curso</h2><h3>Aspectos que debería mantener</h3>${countedResponseList(report.trainerFeedback.strengths)}<h3>Oportunidades de mejora</h3>${countedResponseList(report.trainerFeedback.improvements)}</section>`;
   return baseReportHtml(report)
-    .replace("Expectativas iniciales y cumplimiento final", "Expectativa general y cumplimiento final")
     .replace("</article>", `${additional}</article>`);
 }
 
@@ -339,10 +374,10 @@ function scopedReportHtml(report, scope) {
     ? (encounter.questions.length ? `<table class="report-table"><thead><tr><th>Pregunta</th><th>Entrada</th><th>Salida</th><th>Cambio</th><th>Mejoró / Igual / Bajó</th></tr></thead><tbody>${encounter.questions.map(reportTableQuestion).join("")}</tbody></table>` : `<p class="muted">No hay preguntas técnicas activas en este Ticket.</p>`)
     : phaseReportTable(encounter, phase);
   const entranceDetails = (phase === "entrance" || phase === "both") ? (number === 1
-    ? `<h2>Expectativa general inicial</h2>${barList(report.expectations.filter(row => row.count).map(row => ({ label: row.label, count: row.count, share: report.participants.length ? row.count / report.participants.length * 100 : 0 })))}`
-    : `<h2>Expectativas escritas de la unidad</h2>${responseList(encounter.unitExpectations)}`) : "";
-  const exitDetails = (phase === "exit" || phase === "both") ? `<h2>Satisfacción con la unidad</h2><p class="report-meta">Promedio: ${encounter.satisfaction.mean === null ? "—" : `${encounter.satisfaction.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`} · Respuestas: ${encounter.satisfaction.n}</p>${barList(encounter.satisfactionDistribution)}${number === report.course.encounters.length ? `<h2>Mejora del capacitador y del curso</h2><h3>Aspectos que debería mantener</h3>${responseList(report.trainerFeedback.strengths)}<h3>Oportunidades de mejora</h3>${responseList(report.trainerFeedback.improvements)}` : ""}` : "";
-  return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Resumen por Ticket</span><h1>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h1><div class="report-meta">${escapeHtml(report.course.name)} · ${phaseLabel}<br>Profesor/a: ${escapeHtml(report.course.instructor)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${participantCount}</strong><span>Participantes</span></div><div class="report-card"><strong>${selectedResponses.length}</strong><span>Respuestas</span></div><div class="report-card"><strong>${phase === "exit" ? encounter.exitCount : encounter.entranceCount}</strong><span>${phase === "exit" ? "Salidas" : "Entradas"}</span></div><div class="report-card"><strong>${encounter.paired}</strong><span>Pares Entrada/Salida</span></div></div><h2>Aprendizaje</h2>${questions}${entranceDetails}${exitDetails}</article>`;
+    ? `<h2>Perfil de expectativas del curso</h2>${barList(report.expectations)}`
+    : `<h2>Perfil de expectativas de la unidad</h2>${barList(encounter.unitExpectationProfile)}`) : "";
+  const exitDetails = (phase === "exit" || phase === "both") ? `<h2>Satisfacción con la unidad</h2><p class="report-meta">Promedio: ${encounter.satisfaction.mean === null ? "—" : `${encounter.satisfaction.mean.toLocaleString("es-AR", { maximumFractionDigits: 2 })} / 5`} · Respuestas: ${encounter.satisfaction.n}</p>${barList(encounter.satisfactionDistribution)}${number === report.course.encounters.length ? `<h2>Mejora del capacitador y del curso</h2><h3>Aspectos que debería mantener</h3>${countedResponseList(report.trainerFeedback.strengths)}<h3>Oportunidades de mejora</h3>${countedResponseList(report.trainerFeedback.improvements)}` : ""}` : "";
+  return `<article class="report-paper"><span class="eyebrow">ERYLA METYLA · Informe por Ticket</span><h1>Ticket ${encounter.number} · ${escapeHtml(encounter.title)}</h1><div class="report-meta">${escapeHtml(report.course.name)} · ${phaseLabel}<br>Profesor/a: ${escapeHtml(report.course.instructor)} · Generado: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}</div><div class="report-cards"><div class="report-card"><strong>${participantCount}</strong><span>Participantes</span></div><div class="report-card"><strong>${selectedResponses.length}</strong><span>Respuestas</span></div><div class="report-card"><strong>${phase === "exit" ? encounter.exitCount : encounter.entranceCount}</strong><span>${phase === "exit" ? "Salidas" : "Entradas"}</span></div><div class="report-card"><strong>${encounter.paired}</strong><span>Pares Entrada/Salida</span></div></div><h2>Análisis estadístico de mejora</h2>${learningAnalysisHtml(encounter.learning)}<h2>Resultado por pregunta</h2>${questions}${entranceDetails}${exitDetails}</article>`;
 }
 
 function selectedReport(report) {
@@ -353,14 +388,20 @@ function selectedReport(report) {
   return { html: scopedReportHtml(report, scope), title: `${report.course.name} · Ticket ${number} · ${phaseSlug}`, filename: `resumen-ticket-${number}-${phaseSlug}-${report.course.name}` };
 }
 
-function filenameSlug(value) {
-  return String(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-const REPORT_CSS = `:root{font-family:Arial,sans-serif;color:#20252b}body{margin:0;background:#f5f6f7}.report-paper{max-width:900px;margin:24px auto;padding:38px;background:#fff}.eyebrow{color:#fe5e01;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-size:32px;margin:5px 0 8px}h2{font-size:19px;margin:30px 0 12px;padding-top:18px;border-top:1px solid #ded9e8}h3{font-size:15px}.report-meta,.muted{color:#626973;font-size:12px;line-height:1.5}.report-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:22px 0}.report-card{padding:13px;border:1px solid #ded9e8;border-radius:9px}.report-card strong{display:block;font-size:23px}.report-card span{color:#626973;font-size:11px}.report-table{width:100%;border-collapse:collapse;font-size:12px}.report-table th,.report-table td{padding:8px 6px;border-bottom:1px solid #ded9e8;text-align:right}.report-table th:first-child,.report-table td:first-child{text-align:left}.report-note{padding:11px 13px;border-left:3px solid #6a35d6;background:#f0eafb;font-size:12px}.bar-list{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:180px 1fr 50px;align-items:center;gap:9px;font-size:12px}.bar-track{height:8px;overflow:hidden;border-radius:99px;background:#e9e5ef}.bar-track span{display:block;height:100%;background:#6a35d6}@media(max-width:650px){.report-paper{margin:0;padding:20px 14px}.report-cards{grid-template-columns:repeat(2,1fr)}.report-table{font-size:10px}.bar-row{grid-template-columns:110px 1fr 35px}}@media print{body{background:#fff}.report-paper{margin:0;padding:0}}`;
+const REPORT_CSS = `@page{size:A4;margin:14mm}:root{font-family:Arial,sans-serif;color:#20252b}body{margin:0;background:#f5f6f7}.report-paper{max-width:900px;margin:24px auto;padding:38px;background:#fff}.eyebrow,.section-kicker{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.eyebrow{color:#fe5e01}.section-kicker{color:#6a35d6}h1{font-size:32px;margin:5px 0 8px}h2{font-size:21px;margin:20px 0 12px;padding-top:14px;border-top:1px solid #ded9e8}h3{font-size:15px;margin:22px 0 10px}.report-meta,.muted{color:#626973;font-size:12px;line-height:1.5}.report-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:22px 0}.report-card{padding:13px;border:1px solid #ded9e8;border-radius:9px}.report-card strong{display:block;font-size:23px}.report-card span{color:#626973;font-size:11px}.report-page{margin-top:34px}.report-two-columns{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}.report-table{width:100%;border-collapse:collapse;font-size:12px}.report-table th,.report-table td{padding:8px 6px;border-bottom:1px solid #ded9e8;text-align:right}.report-table th:first-child,.report-table td:first-child{text-align:left}.report-note{padding:11px 13px;border-left:3px solid #6a35d6;background:#f0eafb;font-size:12px}.bar-list{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:180px 1fr 50px;align-items:center;gap:9px;font-size:12px}.bar-track{height:8px;overflow:hidden;border-radius:99px;background:#e9e5ef}.bar-track span{display:block;height:100%;background:#6a35d6}@media(max-width:650px){.report-paper{margin:0;padding:20px 14px}.report-cards,.report-two-columns{grid-template-columns:1fr 1fr}.report-table{font-size:10px}.bar-row{grid-template-columns:110px 1fr 35px}}@media print{body{background:#fff}.report-paper{max-width:none;margin:0;padding:0}.report-page{break-before:page;page-break-before:always;margin-top:0}.report-card,.bar-row,tr{break-inside:avoid;page-break-inside:avoid}.report-two-columns{grid-template-columns:1fr 1fr}}`;
 
 function fullReportDocument(content, title) {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Informe ${escapeHtml(title)}</title><style>${REPORT_CSS}</style></head><body>${content}</body></html>`;
+}
+
+function printReport(content, title, targetWindow = window.open("", "_blank")) {
+  if (!targetWindow) throw new Error("El navegador bloqueó la ventana del PDF. Permití las ventanas emergentes e intentá nuevamente.");
+  targetWindow.document.write(fullReportDocument(content, title));
+  targetWindow.document.close();
+  targetWindow.setTimeout(() => {
+    targetWindow.focus();
+    targetWindow.print();
+  }, 200);
 }
 
 function confirmAction(title, text, typed = false) {
@@ -477,15 +518,18 @@ async function initAdmin() {
   });
   $$('[data-close-dialog]').forEach(button => button.addEventListener("click", () => $("#report-dialog").close()));
   $("[data-print-report]").addEventListener("click", () => {
-    const html = fullReportDocument($("[data-report-content]").innerHTML, course?.name || "Curso");
-    const win = window.open("", "_blank");
-    win.document.write(html); win.document.close(); win.focus(); win.print();
+    printReport($("[data-report-content]").innerHTML, course?.name || "Curso");
   });
   $("#download-report-button").addEventListener("click", async () => {
     if (!course) return;
-    const report = selectedReport(await refreshData());
-    const html = fullReportDocument(report.html, report.title);
-    downloadHtml(`${filenameSlug(report.filename)}.html`, html);
+    const targetWindow = window.open("", "_blank");
+    try {
+      const report = selectedReport(await refreshData());
+      printReport(report.html, report.title, targetWindow);
+    } catch (error) {
+      targetWindow?.close();
+      alert(error.message);
+    }
   });
   $("#download-data-button").addEventListener("click", async () => {
     if (!course) return;
