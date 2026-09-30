@@ -113,6 +113,7 @@ export class DataClient {
   constructor() {
     this.remote = configured();
     this.token = sessionStorage.getItem(storageKey("admin-token")) || "";
+    this.refreshToken = sessionStorage.getItem(storageKey("admin-refresh-token")) || "";
   }
 
   get isDemo() { return !this.remote; }
@@ -127,13 +128,48 @@ export class DataClient {
     return headers;
   }
 
-  async request(path, options = {}, admin = false) {
+  saveSession(payload) {
+    this.token = payload?.access_token || "";
+    this.refreshToken = payload?.refresh_token || this.refreshToken || "";
+    if (this.token) sessionStorage.setItem(storageKey("admin-token"), this.token);
+    if (this.refreshToken) sessionStorage.setItem(storageKey("admin-refresh-token"), this.refreshToken);
+  }
+
+  async refreshSession() {
+    if (!this.remote || !this.refreshToken) return false;
+    try {
+      const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: { apikey: CONFIG.supabaseAnonKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: this.refreshToken })
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.access_token) {
+        this.logout();
+        return false;
+      }
+      this.saveSession(payload);
+      return true;
+    } catch {
+      this.logout();
+      return false;
+    }
+  }
+
+  async request(path, options = {}, admin = false, allowRefresh = true) {
     const response = await fetch(`${CONFIG.supabaseUrl}${path}`, {
       ...options,
       headers: { ...this.headers(admin, options.prefer), ...(options.headers || {}) }
     });
     const text = await response.text();
     const payload = text ? JSON.parse(text) : null;
+    if (response.status === 401 && admin && allowRefresh && await this.refreshSession()) {
+      return this.request(path, options, admin, false);
+    }
+    if (response.status === 401 && admin) {
+      this.logout();
+      throw new Error("Tu sesión venció. Volvé a ingresar con la clave para continuar.");
+    }
     if (!response.ok) throw apiError(payload, response.status);
     return payload;
   }
@@ -228,8 +264,7 @@ export class DataClient {
     });
     const payload = await response.json();
     if (!response.ok) throw apiError(payload, response.status);
-    this.token = payload.access_token;
-    sessionStorage.setItem(storageKey("admin-token"), this.token);
+    this.saveSession(payload);
     const profiles = await this.request("/rest/v1/admin_profiles?select=user_id&limit=1", {}, true);
     if (!profiles.length) {
       this.logout();
@@ -253,7 +288,9 @@ export class DataClient {
 
   logout() {
     this.token = "";
+    this.refreshToken = "";
     sessionStorage.removeItem(storageKey("admin-token"));
+    sessionStorage.removeItem(storageKey("admin-refresh-token"));
   }
 
   async saveCourse(values) {

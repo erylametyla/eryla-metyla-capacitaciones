@@ -1,4 +1,4 @@
-import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-3";
+import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-4";
 import { buildReportData } from "./stats.js?v=20260930-3";
 import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260930-3";
 
