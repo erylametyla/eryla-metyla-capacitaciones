@@ -40,7 +40,6 @@ create table public.participants (
   institution text not null check (char_length(trim(institution)) between 2 and 180),
   work_area text not null check (char_length(trim(work_area)) between 2 and 180),
   registered_at timestamptz not null default now(),
-  unique (course_id, email),
   unique (course_id, dni)
 );
 
@@ -162,9 +161,13 @@ begin
     values (p_course_id, trim(p_full_name), lower(trim(p_email)), regexp_replace(p_dni, '[^0-9]', '', 'g'), trim(p_institution), trim(p_work_area))
     returning id into selected_participant;
   else
+    if nullif(regexp_replace(coalesce(p_dni, ''), '[^0-9]', '', 'g'), '') is null then
+      raise exception 'Ingresá el DNI utilizado en el Ticket 1';
+    end if;
     select id into selected_participant from public.participants
-    where course_id = p_course_id and email = lower(trim(p_email));
-    if selected_participant is null then raise exception 'No encontramos tu registro del Ticket 1 con ese correo'; end if;
+    where course_id = p_course_id
+      and dni = regexp_replace(p_dni, '[^0-9]', '', 'g');
+    if selected_participant is null then raise exception 'No encontramos tu registro del Ticket 1 con ese DNI'; end if;
   end if;
 
   if selected_course.active_phase = 'entrance' and selected_course.active_encounter > 1
@@ -232,7 +235,7 @@ begin
     'expected_participants', case when assigned_group is not null then (selected_grouping->>'expected_participants')::int end
   );
 exception when unique_violation then
-  raise exception 'Este ticket ya fue completado con ese correo o DNI';
+  raise exception 'Este Ticket 1 ya fue completado con ese DNI';
 end;
 $$;
 

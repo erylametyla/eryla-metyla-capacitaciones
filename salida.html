@@ -18,12 +18,13 @@
       <header class="form-card__header">
         <span class="eyebrow" data-ticket-kicker>Al finalizar el encuentro</span>
         <h1 data-ticket-title>Ticket de salida</h1>
-        <p>Usá el mismo correo con el que completaste el Ticket 1.</p>
+        <p>Usá el mismo DNI con el que completaste el Ticket 1.</p>
       </header>
       <form id="ticket-form" novalidate>
         <div class="field">
-          <label for="email">Correo electrónico</label>
-          <input id="email" name="email" type="email" autocomplete="email" required placeholder="nombre@correo.com">
+          <label for="dni-repeat">DNI</label>
+          <input id="dni-repeat" name="dni_repeat" inputmode="numeric" pattern="[0-9 .-]{6,14}" maxlength="14" autocomplete="off" required placeholder="Usá el mismo DNI del Ticket 1">
+          <small>Permite asociar esta respuesta a tu recorrido en el curso.</small>
         </div>
         <div data-questions></div>
         <fieldset class="field scale-field">
@@ -76,6 +77,6 @@
     </section>
     <section class="notice-card" data-unavailable-panel hidden></section>
   </main>
-  <script type="module" src="app.js?v=20260930-4"></script>
+  <script type="module" src="app.js?v=20260930-5"></script>
 </body>
 </html>

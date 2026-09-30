@@ -8,7 +8,7 @@ Aplicación responsive para cursos organizados en encuentros. Cada encuentro tie
 - tres preguntas técnicas editables por encuentro, repetidas en Entrada y Salida, con control Visible/Oculta individual;
 - pregunta integradora comparada entre Entrada 1 y la Salida del último encuentro;
 - registro inicial de nombre y apellido, correo, DNI, institución, área de trabajo y fecha;
-- vinculación de todos los tickets al mismo participante mediante correo;
+- vinculación de todos los tickets al mismo participante mediante DNI; el correo se conserva como dato de contacto y puede repetirse entre compañeros;
 - expectativa inicial, clasificación temática y cumplimiento final;
 - informe general y resúmenes descargables por Ticket, por Entrada y por Salida, con respuestas correctas, cambio y participantes que mejoraron, se mantuvieron o disminuyeron;
 - cantidad esperada de participantes y sorteo equilibrado de grupos configurable para la Entrada y la Salida de cada encuentro;
@@ -42,6 +42,7 @@ La clave `anon` es pública por diseño. Nunca debe copiarse la clave `service_r
 Para actualizar una instalación anterior a la función de grupos, ejecutar una vez `supabase-grouping-migration.sql` en el editor SQL de Supabase.
 Para agregar expectativas por unidad y devoluciones del capacitador a una instalación existente, ejecutar una vez `supabase-feedback-migration.sql`.
 Para permitir activar u ocultar preguntas en una instalación existente, ejecutar una vez `supabase-question-visibility-migration.sql`.
+Para vincular los tickets mediante DNI y permitir correos institucionales repetidos, ejecutar una vez `supabase-dni-identity-migration.sql`.
 
 ## Privacidad
 

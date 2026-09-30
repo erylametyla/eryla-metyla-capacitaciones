@@ -31,9 +31,9 @@
             <div class="field"><label for="work-area">Área de trabajo</label><input id="work-area" name="work_area" maxlength="180"></div>
           </div>
         </section>
-        <div class="field" data-email-only>
-          <label for="email-repeat">Correo electrónico</label>
-          <input id="email-repeat" name="email_repeat" type="email" autocomplete="email" placeholder="Usá el mismo correo del Ticket 1">
+        <div class="field" data-dni-only>
+          <label for="dni-repeat">DNI</label>
+          <input id="dni-repeat" name="dni_repeat" inputmode="numeric" pattern="[0-9 .-]{6,14}" maxlength="14" autocomplete="off" placeholder="Usá el mismo DNI del Ticket 1">
           <small>Permite asociar esta respuesta a tu recorrido en el curso.</small>
         </div>
         <div data-questions></div>
@@ -53,6 +53,6 @@
     </section>
     <section class="notice-card" data-unavailable-panel hidden></section>
   </main>
-  <script type="module" src="app.js?v=20260930-4"></script>
+  <script type="module" src="app.js?v=20260930-5"></script>
 </body>
 </html>

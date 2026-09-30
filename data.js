@@ -191,26 +191,27 @@ export class DataClient {
       const course = readLocal("course", DEFAULT_COURSE);
       if (course.status !== "open") throw new Error("El curso está cerrado.");
       const email = normalizeEmail(values.email);
+      const dni = String(values.dni || "").replace(/\D/g, "");
       const participants = readLocal("participants", []);
-      let participant = participants.find(item => item.course_id === course.id && normalizeEmail(item.email) === email);
+      let participant = participants.find(item => item.course_id === course.id && String(item.dni || "").replace(/\D/g, "") === dni);
       if (course.active_encounter === 1 && course.active_phase === "entrance") {
-        if (participant || participants.some(item => item.course_id === course.id && item.dni === values.dni)) {
-          throw new Error("Este ticket ya fue completado con ese correo o DNI.");
+        if (participant) {
+          throw new Error("Este Ticket 1 ya fue completado con ese DNI.");
         }
         participant = {
           id: localId(), course_id: course.id, full_name: values.full_name,
-          email, dni: String(values.dni).replace(/\D/g, ""),
+          email, dni,
           institution: values.institution, work_area: values.work_area,
           registered_at: new Date().toISOString()
         };
         participants.push(participant);
         writeLocal("participants", participants);
       } else if (!participant) {
-        throw new Error("No encontramos tu registro del Ticket 1 con ese correo.");
+        throw new Error("No encontramos tu registro del Ticket 1 con ese DNI.");
       }
       const responses = readLocal("responses", []);
       if (responses.some(item => item.participant_id === participant.id && item.encounter_number === course.active_encounter && item.phase === course.active_phase)) {
-        throw new Error("Este ticket ya fue completado con ese correo.");
+        throw new Error("Este ticket ya fue completado con ese DNI.");
       }
       const grouping = activeGrouping(course);
       const groupCount = grouping.enabled ? Math.max(2, Math.min(100, Number(grouping.group_count) || 2)) : null;

@@ -1,4 +1,4 @@
-import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-4";
+import { DataClient, DEFAULT_COURSE } from "./data.js?v=20260930-5";
 import { buildReportData } from "./stats.js?v=20260930-3";
 import { buildCsvData, downloadCsv, downloadHtml } from "./exports.js?v=20260930-3";
 
@@ -92,9 +92,9 @@ async function initTicket(phase) {
     const profile = $("[data-profile-fields]");
     if (profile) {
       profile.hidden = !firstEntrance;
-      $("[data-email-only]").hidden = firstEntrance;
+      $("[data-dni-only]").hidden = firstEntrance;
       $$('input', profile).forEach(input => { input.required = firstEntrance; });
-      $("[name=email_repeat]").required = !firstEntrance;
+      $("[name=dni_repeat]").required = !firstEntrance;
       $("[data-expectation]").hidden = !firstEntrance;
       $("[name=expectation_text]").required = firstEntrance;
       $("[data-unit-expectation]").hidden = !unitEntrance;
@@ -120,8 +120,8 @@ async function initTicket(phase) {
       try {
         const result = await client.submitTicket({
           course_id: course.id,
-          email: firstEntrance ? values.get("email") : values.get("email_repeat") || values.get("email"),
-          full_name: values.get("full_name"), dni: values.get("dni"),
+          email: firstEntrance ? values.get("email") : null,
+          full_name: values.get("full_name"), dni: firstEntrance ? values.get("dni") : values.get("dni_repeat"),
           institution: values.get("institution"), work_area: values.get("work_area"),
           expectation_text: values.get("expectation_text"),
           expectation_fulfillment: values.get("expectation_fulfillment"),
